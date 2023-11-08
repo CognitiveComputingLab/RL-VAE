@@ -86,6 +86,8 @@ class VaeSystem:
         self.avg_loss_li = []
         self.total_loss_li = []
 
+        self.arch_name = "VAE"
+
     def plot_loss(self, save_as):
         # Plotting the average loss per epoch
         plt.plot(range(len(self.avg_loss_li)), self.avg_loss_li)

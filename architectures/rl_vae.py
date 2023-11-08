@@ -10,21 +10,28 @@ import matplotlib.pyplot as plt
 torch.manual_seed(0)
 
 
+class GeneralModel(nn.Module):
+    def __init__(self, input_size, output_size):
+        super(GeneralModel, self).__init__()
+        self.linear1 = nn.Linear(input_size, 512)
+        self.linear2 = nn.Linear(512, 1024)
+
+    def forward(self, x):
+        x = functional.relu(self.linear1(x))
+        x = functional.relu(self.linear2(x))
+        return x
+
+
 class EncoderAgent(nn.Module):
     def __init__(self, latent_dims):
         super(EncoderAgent, self).__init__()
-        self.linear1 = nn.Linear(3, 512)
-        self.linear2 = nn.Linear(512, 1024)
+        self.gm = GeneralModel(3, 1024)
         self.linearM = nn.Linear(1024, latent_dims)
         self.linearS = nn.Linear(1024, latent_dims)
 
     def forward(self, x):
-        x = torch.flatten(x, start_dim=1)
-        x = functional.relu(self.linear1(x))
-        x = functional.relu(self.linear2(x))
-        # mean
+        x = self.gm(x)
         mu = self.linearM(x)
-        # variance
         log_var = self.linearS(x)
         return mu, log_var
 
@@ -32,15 +39,11 @@ class EncoderAgent(nn.Module):
 class MeanEncoderAgent(nn.Module):
     def __init__(self, latent_dims):
         super(MeanEncoderAgent, self).__init__()
-        self.linear1 = nn.Linear(3, 512)
-        self.linear2 = nn.Linear(512, 1024)
+        self.gm = GeneralModel(3, 1024)
         self.linearM = nn.Linear(1024, latent_dims)
 
     def forward(self, x):
-        x = torch.flatten(x, start_dim=1)
-        x = functional.relu(self.linear1(x))
-        x = functional.relu(self.linear2(x))
-        # mean
+        x = self.gm(x)
         mu = self.linearM(x)
         return mu
 

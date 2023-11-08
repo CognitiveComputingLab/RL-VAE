@@ -34,7 +34,7 @@ if __name__ == "__main__":
         batch_size=128,
         shuffle=False
     )
-    model.train(data_loader, epochs=100)
+    model.train(data_loader, epochs=5)
     model.plot_latent(data_loader, f"images/{model.arch_name}-latent.png")
     model.plot_loss(f"images/{model.arch_name}-loss.png")
 
