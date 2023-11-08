@@ -29,6 +29,22 @@ class EncoderAgent(nn.Module):
         return mu, log_var
 
 
+class MeanEncoderAgent(nn.Module):
+    def __init__(self, latent_dims):
+        super(MeanEncoderAgent, self).__init__()
+        self.linear1 = nn.Linear(3, 512)
+        self.linear2 = nn.Linear(512, 1024)
+        self.linearM = nn.Linear(1024, latent_dims)
+
+    def forward(self, x):
+        x = torch.flatten(x, start_dim=1)
+        x = functional.relu(self.linear1(x))
+        x = functional.relu(self.linear2(x))
+        # mean
+        mu = self.linearM(x)
+        return mu
+
+
 class DecoderAgent(nn.Module):
     def __init__(self, latent_dims):
         super(DecoderAgent, self).__init__()
@@ -56,6 +72,7 @@ class RlVae:
 
         self.transmit_function = self.transmit_identity
         self.reward_function = self.standard_reward_function
+        self.exploration_function = lambda: 1
 
         self.avg_loss_li = []
         self.total_loss_li = []
@@ -119,9 +136,18 @@ class RlVae:
         """
         self.encoder_agent.to('cpu')
         for i, (x, y) in enumerate(data_loader):
-            mu, log_var = self.encoder_agent(x.to('cpu'))
-            z = self.re_parameterize(mu, log_var)
+            # compute encoded datapoint
+            result = self.encoder_agent(x.to('cpu'))
+            if type(result) is tuple:
+                mean, logvar = result
+            else:
+                mean = result
+                logvar = self.exploration_function()
+            mean = mean.to('cpu')
+            logvar = logvar.to('cpu')
+            z = self.re_parameterize(mean, logvar)
             z = z.to('cpu').detach().numpy()
+
             # Assume that `y` contains the colors and is in the shape (batch_size, 4)
             # We take only the first three values assuming they correspond to RGB colors
             colors = y[:, :3].to('cpu').detach().numpy()
@@ -171,7 +197,12 @@ class RlVae:
                 x_a = x.to(self.device)
 
                 # encode data point (encoder policy action)
-                mean, logvar = self.encoder_agent(x_a)
+                result = self.encoder_agent(x_a)
+                if type(result) is tuple:
+                    mean, logvar = result
+                else:
+                    mean = result
+                    logvar = self.exploration_function()
 
                 # re-parameterize to get a sample from the approximate posterior
                 z_a = self.re_parameterize(mean, logvar)

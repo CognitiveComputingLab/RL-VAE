@@ -2,8 +2,9 @@ import torch
 
 from toy_data import data
 from toy_data import plotting
+from toy_data import embedding
 
-from architectures import rl_vae, vae
+from architectures import rl_vae, vae, ce_rl_vae
 import helper
 
 # module init
@@ -21,20 +22,21 @@ if __name__ == "__main__":
     # fig.show()
 
     # use UMAP embedding
-    # umap = embedding.UMAP(toy_data)
+    umap = embedding.UMAP(toy_data)
     # umap.fit()
     # umap.plot()
 
     # train RL-VAE system on data
-    model = rl_vae.RlVae(device)
+    model = ce_rl_vae.ConstantExplorationRLVAE(device)
+    model.exploration_rate = 0.5
     toy_dataset = helper.ToyTorchDataset(toy_data)
     data_loader = torch.utils.data.DataLoader(
         toy_dataset,
         batch_size=128,
         shuffle=False
     )
-    model.train(data_loader, epochs=5)
-    model.plot_latent(data_loader, "images/rl-vae-latent.png")
-    model.plot_loss("images/rl-vae-loss.png")
+    model.train(data_loader, epochs=100)
+    model.plot_latent(data_loader, f"images/{model.arch_name}-latent.png")
+    model.plot_loss(f"images/{model.arch_name}-loss.png")
 
 
