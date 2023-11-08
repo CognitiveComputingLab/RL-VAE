@@ -27,8 +27,7 @@ if __name__ == "__main__":
     # umap.plot()
 
     # train RL-VAE system on data
-    model = ce_rl_vae.ConstantExplorationRLVAE(device)
-    model.exploration_rate = 0.5
+    model = rl_vae.RlVae(device)
     toy_dataset = helper.ToyTorchDataset(toy_data)
     data_loader = torch.utils.data.DataLoader(
         toy_dataset,
