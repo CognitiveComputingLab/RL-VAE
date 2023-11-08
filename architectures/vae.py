@@ -10,9 +10,9 @@ torch.manual_seed(0)
 
 
 class VariationalEncoder(nn.Module):
-    def __init__(self, latent_dims):
+    def __init__(self, input_dim, latent_dims):
         super(VariationalEncoder, self).__init__()
-        self.linear1 = nn.Linear(3, 512)
+        self.linear1 = nn.Linear(input_dim, 512)
         self.linear2 = nn.Linear(512, 1024)
         self.linearM = nn.Linear(1024, latent_dims)
         self.linearS = nn.Linear(1024, latent_dims)
@@ -29,11 +29,11 @@ class VariationalEncoder(nn.Module):
 
 
 class Decoder(nn.Module):
-    def __init__(self, latent_dims):
+    def __init__(self, input_dim, latent_dims):
         super(Decoder, self).__init__()
         self.linear1 = nn.Linear(latent_dims, 512)
         self.linear2 = nn.Linear(512, 1024)
-        self.linear3 = nn.Linear(1024, 3)
+        self.linear3 = nn.Linear(1024, input_dim)
 
     def forward(self, z):
         z = functional.relu(self.linear1(z))
@@ -59,10 +59,10 @@ def re_parameterize(mu, log_var):
 
 
 class VariationalAutoencoder(nn.Module):
-    def __init__(self, latent_dims):
+    def __init__(self, input_dim, latent_dims):
         super(VariationalAutoencoder, self).__init__()
-        self.encoder = VariationalEncoder(latent_dims)
-        self.decoder = Decoder(latent_dims)
+        self.encoder = VariationalEncoder(input_dim, latent_dims)
+        self.decoder = Decoder(input_dim, latent_dims)
 
     def forward(self, x):
         # encode
@@ -77,10 +77,11 @@ class VariationalAutoencoder(nn.Module):
 
 
 class VaeSystem:
-    def __init__(self, device, latent_dimensions=2):
+    def __init__(self, device, input_dim, latent_dimensions=2):
         self.device = device
         self.latent_dimensions = latent_dimensions
-        self.autoencoder = VariationalAutoencoder(self.latent_dimensions).to(device)
+        self.input_dim = input_dim
+        self.autoencoder = VariationalAutoencoder(input_dim, self.latent_dimensions).to(device)
         self.optimiser = torch.optim.Adam(self.autoencoder.parameters())
 
         self.avg_loss_li = []

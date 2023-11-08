@@ -27,7 +27,8 @@ if __name__ == "__main__":
     # umap.plot()
 
     # train RL-VAE system on data
-    model = rl_vae.RlVae(device)
+    input_dim = 3
+    model = rl_vae.RlVae(device, input_dim)
     toy_dataset = helper.ToyTorchDataset(toy_data)
     data_loader = torch.utils.data.DataLoader(
         toy_dataset,

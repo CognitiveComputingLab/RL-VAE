@@ -3,10 +3,10 @@ import architectures.rl_vae as rl_vae
 
 
 class ConstantExplorationRLVAE(rl_vae.RlVae):
-    def __init__(self, device, latent_dimensions=2):
-        super().__init__(device, latent_dimensions)
+    def __init__(self, device, input_dim, latent_dimensions=2):
+        super().__init__(device, input_dim, latent_dimensions)
         self.arch_name = "ConstantExplorationRL-VAE"
-        self.encoder_agent = rl_vae.MeanEncoderAgent(latent_dimensions).to(self.device)
+        self.encoder_agent = rl_vae.MeanEncoderAgent(input_dim, latent_dimensions).to(self.device)
         self.exploration_rate = 1
         self.exploration_function = self.constant_exploration_function
         self.reward_function = self.non_exploration_reward_function

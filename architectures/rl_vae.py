@@ -11,23 +11,28 @@ torch.manual_seed(0)
 
 
 class GeneralModel(nn.Module):
-    def __init__(self, input_size, output_size):
+    def __init__(self, input_dim, hidden_dims):
         super(GeneralModel, self).__init__()
-        self.linear1 = nn.Linear(input_size, 512)
-        self.linear2 = nn.Linear(512, 1024)
+        self.layers = nn.ModuleList()
+        for h_dim in hidden_dims:
+            self.layers.append(nn.Sequential(
+                nn.Linear(input_dim, h_dim),
+                nn.ReLU(),
+            ))
+            input_dim = h_dim
 
     def forward(self, x):
-        x = functional.relu(self.linear1(x))
-        x = functional.relu(self.linear2(x))
+        for layer in self.layers:
+            x = layer(x)
         return x
 
 
 class EncoderAgent(nn.Module):
-    def __init__(self, latent_dims):
+    def __init__(self, input_dim, latent_dims):
         super(EncoderAgent, self).__init__()
-        self.gm = GeneralModel(3, 1024)
-        self.linearM = nn.Linear(1024, latent_dims)
-        self.linearS = nn.Linear(1024, latent_dims)
+        self.gm = GeneralModel(input_dim, [1024, 2048, 2048])
+        self.linearM = nn.Linear(2048, latent_dims)
+        self.linearS = nn.Linear(2048, latent_dims)
 
     def forward(self, x):
         x = self.gm(x)
@@ -37,10 +42,10 @@ class EncoderAgent(nn.Module):
 
 
 class MeanEncoderAgent(nn.Module):
-    def __init__(self, latent_dims):
+    def __init__(self, input_dim, latent_dims):
         super(MeanEncoderAgent, self).__init__()
-        self.gm = GeneralModel(3, 1024)
-        self.linearM = nn.Linear(1024, latent_dims)
+        self.gm = GeneralModel(input_dim, [1024, 2048, 2048])
+        self.linearM = nn.Linear(2048, latent_dims)
 
     def forward(self, x):
         x = self.gm(x)
@@ -49,27 +54,27 @@ class MeanEncoderAgent(nn.Module):
 
 
 class DecoderAgent(nn.Module):
-    def __init__(self, latent_dims):
+    def __init__(self, input_dim, latent_dims):
         super(DecoderAgent, self).__init__()
-        self.linear1 = nn.Linear(latent_dims, 512)
-        self.linear2 = nn.Linear(512, 1024)
-        self.linear3 = nn.Linear(1024, 3)
+        self.gm = GeneralModel(latent_dims, [512, 1024, 2024])
+        self.linear = nn.Linear(2024, input_dim)
 
     def forward(self, z):
-        z = functional.relu(self.linear1(z))
-        z = functional.relu(self.linear2(z))
-        z = self.linear3(z)
+        z = self.gm(z)
+        z = self.linear(z)
         return z
 
 
 class RlVae:
-    def __init__(self, device, latent_dimensions=2):
+    def __init__(self, device, input_dim, latent_dimensions=2):
         self.device = device
-        self.encoder_agent = EncoderAgent(latent_dimensions).to(device)
-        self.decoder_agent = DecoderAgent(latent_dimensions).to(device)
+        self.encoder_agent = EncoderAgent(input_dim, latent_dimensions).to(device)
+        self.decoder_agent = DecoderAgent(input_dim, latent_dimensions).to(device)
         self.optimizer = torch.optim.Adam(list(self.encoder_agent.parameters()) + list(self.decoder_agent.parameters()))
 
-        self.latent_dimensions = 2
+        self.latent_dimensions = latent_dimensions
+        self.input_dim = input_dim
+
         self.verbose = True
         self.arch_name = "RL-VAE"
 
@@ -233,3 +238,10 @@ class RlVae:
             self.avg_loss_li.append(avg_loss)
             self.console_log(f"total loss: {total_loss}")
             self.console_log(f"average loss: {avg_loss}")
+
+    def save_model(self, path):
+        """
+        save the encoder and decoder separately
+        """
+        torch.save(self.encoder_agent.state_dict(), f"{path}/{self.arch_name}-encoder.png")
+        torch.save(self.decoder_agent.state_dict(), f"{path}/{self.arch_name}-decoder.png")
