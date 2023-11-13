@@ -11,7 +11,7 @@ class ConstantExplorationRLVAE(rl_vae.RlVae):
         self.exploration_function = self.constant_exploration_function
         self.reward_function = self.non_exploration_reward_function
 
-    def constant_exploration_function(self):
+    def constant_exploration_function(self, epoch):
         """
         set the exploration rate to a constant value across all dimensions
         """

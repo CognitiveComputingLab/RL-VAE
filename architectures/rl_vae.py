@@ -80,7 +80,7 @@ class RlVae:
 
         self.transmit_function = self.transmit_identity
         self.reward_function = self.standard_reward_function
-        self.exploration_function = lambda: 1
+        self.exploration_function = lambda epoch: 1
         self.success_weight = 1
 
         self.avg_loss_li = []
@@ -147,13 +147,11 @@ class RlVae:
             result = self.encoder_agent(x.to('cpu'))
             if type(result) is tuple:
                 mean, logvar = result
+                z = self.re_parameterize(mean, logvar)
+                z = z.to('cpu').detach().numpy()
             else:
                 mean = result
-                logvar = self.exploration_function()
-            mean = mean.to('cpu')
-            logvar = logvar.to('cpu')
-            z = self.re_parameterize(mean, logvar)
-            z = z.to('cpu').detach().numpy()
+                z = mean.detach()
 
             # Assume that `y` contains the colors and is in the shape (batch_size, 4)
             # We take only the first three values assuming they correspond to RGB colors
@@ -209,7 +207,7 @@ class RlVae:
                     mean, logvar = result
                 else:
                     mean = result
-                    logvar = self.exploration_function()
+                    logvar = self.exploration_function(epoch)
 
                 # re-parameterize to get a sample from the approximate posterior
                 z_a = self.re_parameterize(mean, logvar)
