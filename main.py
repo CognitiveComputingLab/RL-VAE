@@ -23,6 +23,7 @@ if __name__ == "__main__":
 
     # plot the data
     # plotting.mpl_2d_plot(toy_data)
+
     # fig = plotting.scatter3d(toy_data)
     # fig.show()
 
@@ -32,7 +33,8 @@ if __name__ == "__main__":
     # umap.plot()
 
     # train RL-VAE system on data
-    model = de_rl_vae.DecreasingExplorationRLVAE(device, input_dim)
+    model = rl_vae.RlVae(device, input_dim)
+    model.success_weight = 1
     toy_dataset = helper.ToyTorchDataset(toy_data)
     data_loader = torch.utils.data.DataLoader(
         toy_dataset,

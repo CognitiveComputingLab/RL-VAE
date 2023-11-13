@@ -81,6 +81,7 @@ class RlVae:
         self.transmit_function = self.transmit_identity
         self.reward_function = self.standard_reward_function
         self.exploration_function = lambda: 1
+        self.success_weight = 1
 
         self.avg_loss_li = []
         self.total_loss_li = []
@@ -94,28 +95,26 @@ class RlVae:
     def transmit_identity(z_a):
         return z_a
 
-    @staticmethod
-    def standard_reward_function(x_a, x_b, mean, logvar, z_a):
+    def standard_reward_function(self, x_a, x_b, mean, logvar):
         """
-        the RL-VAE reward function including:
-        1. the success term -> reconstruction
-        2. the KL-divergence as the exploration and surprise
+        the RL-VAE reward function
         """
-        success = functional.mse_loss(x_a, x_b, reduction='sum')
         variance = torch.exp(logvar)
-        exploration = -0.5 * torch.sum(
-            torch.log(2 * torch.pi * variance) + ((z_a - mean) / torch.sqrt(variance)).pow(2))
-        surprise = -0.5 * torch.sum(math.log(2 * torch.pi) + z_a.pow(2))
-        return -(success + (exploration - surprise))
+        exploration = logvar
+        surprise = -variance - torch.square(mean)
+        success = -functional.mse_loss(x_a, x_b, reduction='sum')
+        result = torch.sum(exploration + surprise) + success * self.success_weight
+        return result
 
-    @staticmethod
-    def non_exploration_reward_function(x_a, x_b, mean, logvar, z_a):
+    def non_exploration_reward_function(self, x_a, x_b, mean, logvar):
         """
         the RL-VAE reward function without the exploration term
         """
-        success = functional.mse_loss(x_a, x_b, reduction='sum')
-        surprise = -0.5 * torch.sum(math.log(2 * torch.pi) + z_a.pow(2))
-        return -(success - surprise)
+        variance = torch.exp(logvar)
+        surprise = -variance - torch.square(mean)
+        success = -functional.mse_loss(x_a, x_b, reduction='sum')
+        result = torch.sum(surprise) + success * self.success_weight
+        return result
 
     @staticmethod
     def re_parameterize(mu, log_var):
@@ -222,7 +221,7 @@ class RlVae:
                 x_b = self.decoder_agent(z_b)
 
                 # compute reward / loss
-                reward = self.reward_function(x_a, x_b, mean, logvar, z_a)
+                reward = self.reward_function(x_a, x_b, mean, logvar)
                 loss = -reward
                 total_loss += float(loss)
                 counter += 1
