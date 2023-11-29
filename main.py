@@ -33,16 +33,20 @@ if __name__ == "__main__":
     # umap.plot()
 
     # train RL-VAE system on data
+    # model = de_rl_vae.DecreasingExplorationRLVAE(device, input_dim)
     model = ce_rl_vae.ConstantExplorationRLVAE(device, input_dim)
-    model.initial_exploration = 2
-    model.success_weight = 100
+    model.initial_exploration = 10
+    model.success_weight = 10
     toy_dataset = helper.ToyTorchDataset(toy_data)
     data_loader = torch.utils.data.DataLoader(
         toy_dataset,
         batch_size=128,
         shuffle=False
     )
-    model.train(data_loader, epochs=200)
+    try:
+        model.train(data_loader, epochs=100)
+    except KeyboardInterrupt:
+        print("stopping early...")
     model.plot_latent(data_loader, f"images/{model.arch_name}-latent.png")
     model.plot_loss(f"images/{model.arch_name}-loss.png")
 

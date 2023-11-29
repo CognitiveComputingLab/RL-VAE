@@ -29,9 +29,9 @@ class GeneralModel(nn.Module):
 class EncoderAgent(nn.Module):
     def __init__(self, input_dim, latent_dims):
         super(EncoderAgent, self).__init__()
-        self.gm = GeneralModel(input_dim, [1024, 2048, 2048])
-        self.linearM = nn.Linear(2048, latent_dims)
-        self.linearS = nn.Linear(2048, latent_dims)
+        self.gm = GeneralModel(input_dim, [1024, 2048, 2048, 4096])
+        self.linearM = nn.Linear(4096, latent_dims)
+        self.linearS = nn.Linear(4096, latent_dims)
 
     def forward(self, x):
         x = self.gm(x)
@@ -43,8 +43,8 @@ class EncoderAgent(nn.Module):
 class MeanEncoderAgent(nn.Module):
     def __init__(self, input_dim, latent_dims):
         super(MeanEncoderAgent, self).__init__()
-        self.gm = GeneralModel(input_dim, [1024, 2048, 2048])
-        self.linearM = nn.Linear(2048, latent_dims)
+        self.gm = GeneralModel(input_dim, [1024, 2048, 2048, 4096])
+        self.linearM = nn.Linear(4096, latent_dims)
 
     def forward(self, x):
         x = self.gm(x)
@@ -55,8 +55,8 @@ class MeanEncoderAgent(nn.Module):
 class DecoderAgent(nn.Module):
     def __init__(self, input_dim, latent_dims):
         super(DecoderAgent, self).__init__()
-        self.gm = GeneralModel(latent_dims, [512, 1024, 2024])
-        self.linear = nn.Linear(2024, input_dim)
+        self.gm = GeneralModel(latent_dims, [512, 1024, 2024, 4096])
+        self.linear = nn.Linear(4096, input_dim)
 
     def forward(self, z):
         z = self.gm(z)
