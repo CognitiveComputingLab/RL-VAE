@@ -33,10 +33,8 @@ if __name__ == "__main__":
     # umap.plot()
 
     # train RL-VAE system on data
-    model = rl_vae.RlVae(device, input_dim)
-    model.reward_function = model.non_exploration_reward_function
-    model.exploration_function = model.constant_exploration_function
-    model.starting_exploration_rate = 2
+    model = ce_rl_vae.ConstantExplorationRLVAE(device, input_dim)
+    model.initial_exploration = 2
     model.success_weight = 100
     toy_dataset = helper.ToyTorchDataset(toy_data)
     data_loader = torch.utils.data.DataLoader(

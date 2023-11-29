@@ -1,4 +1,5 @@
 import torch
+import torch.nn.functional as functional
 import architectures.rl_vae as rl_vae
 
 
@@ -7,13 +8,25 @@ class ConstantExplorationRLVAE(rl_vae.RlVae):
         super().__init__(device, input_dim, latent_dimensions)
         self.arch_name = "ConstantExplorationRL-VAE"
         self.encoder_agent = rl_vae.MeanEncoderAgent(input_dim, latent_dimensions).to(self.device)
-        self.exploration_rate = 1
-        self.exploration_function = self.constant_exploration_function
-        self.reward_function = self.non_exploration_reward_function
+        self.optimizer = torch.optim.Adam(list(self.encoder_agent.parameters()) + list(self.decoder_agent.parameters()))
+        self.initial_exploration = 1
 
-    def constant_exploration_function(self, epoch):
+    def reward_function(self, x_a, x_b, mean, logvar):
+        """
+        the RL-VAE reward function without the exploration term
+        """
+        variance = torch.exp(logvar)
+        surprise = -variance - torch.square(mean)
+        success = -functional.mse_loss(x_a, x_b, reduction='sum')
+        result = torch.sum(surprise) + success * self.success_weight
+        return result
+
+    def exploration_function(self, epoch):
         """
         set the exploration rate to a constant value across all dimensions
         """
-        logvar = torch.tensor([self.exploration_rate] * self.latent_dimensions).to(self.device)
+        logvar = torch.tensor([self.initial_exploration] * self.latent_dimensions).to(self.device)
         return logvar
+
+    def train(self, training_data_loader, epochs=100):
+        super().train(training_data_loader, epochs)

@@ -1,4 +1,3 @@
-import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as functional
@@ -68,8 +67,7 @@ class DecoderAgent(nn.Module):
 class RlVae:
     def __init__(self, device, input_dim, latent_dimensions=2):
         self.device = device
-        # self.encoder_agent = EncoderAgent(input_dim, latent_dimensions).to(device)
-        self.encoder_agent = MeanEncoderAgent(input_dim, latent_dimensions).to(device)
+        self.encoder_agent = EncoderAgent(input_dim, latent_dimensions).to(device)
         self.decoder_agent = DecoderAgent(input_dim, latent_dimensions).to(device)
         self.optimizer = torch.optim.Adam(list(self.encoder_agent.parameters()) + list(self.decoder_agent.parameters()))
 
@@ -79,14 +77,7 @@ class RlVae:
         self.verbose = True
         self.arch_name = "RL-VAE"
 
-        self.transmit_function = self.transmit_identity
-        self.reward_function = self.standard_reward_function
-        self.exploration_function = self.decreasing_exploration_function
         self.success_weight = 1
-
-        self.min_exploration = 0.1
-        self.starting_exploration_rate = 2
-        self.exploration_decay = 0.99
 
         self.avg_loss_li = []
         self.total_loss_li = []
@@ -97,10 +88,13 @@ class RlVae:
         print(message)
 
     @staticmethod
-    def transmit_identity(z_a):
+    def transmit_function(z_a):
+        """
+        identity transmission function
+        """
         return z_a
 
-    def standard_reward_function(self, x_a, x_b, mean, logvar):
+    def reward_function(self, x_a, x_b, mean, logvar):
         """
         the RL-VAE reward function
         """
@@ -111,30 +105,11 @@ class RlVae:
         result = torch.sum(exploration + surprise) + success * self.success_weight
         return result
 
-    def non_exploration_reward_function(self, x_a, x_b, mean, logvar):
+    def exploration_function(self, epoch):
         """
-        the RL-VAE reward function without the exploration term
+        to be implemented in subclasses
         """
-        variance = torch.exp(logvar)
-        surprise = -variance - torch.square(mean)
-        success = -functional.mse_loss(x_a, x_b, reduction='sum')
-        result = torch.sum(surprise) + success * self.success_weight
-        return result
-
-    def decreasing_exploration_function(self, epoch):
-        """
-        set the exploration rate to a value that decreases over the epochs
-        """
-        logvar = torch.tensor([self.starting_exploration_rate] * self.latent_dimensions).to(self.device)
-        self.starting_exploration_rate = max(self.min_exploration, self.starting_exploration_rate)
-        return logvar
-
-    def constant_exploration_function(self, epoch):
-        """
-        set the exploration rate to a constant value across all dimensions
-        """
-        logvar = torch.tensor([self.starting_exploration_rate] * self.latent_dimensions).to(self.device)
-        return logvar
+        return
 
     @staticmethod
     def re_parameterize(mu, log_var):
@@ -258,17 +233,6 @@ class RlVae:
             self.avg_loss_li.append(avg_loss)
             self.console_log(f"total loss: {total_loss}")
             self.console_log(f"average loss: {avg_loss}")
-
-            # # Check and print weight changes
-            # for name, param in self.encoder_agent.named_parameters():
-            #     initial_param = initial_weights[name]
-            #     if not torch.equal(initial_param, param):
-            #         change = torch.norm(param - initial_param).item()
-            #         self.console_log(f"Change in {name}: {change}")
-            #     else:
-            #         self.console_log(f"No change")
-
-            self.starting_exploration_rate *= self.exploration_decay
 
     def save_model(self, path):
         """
