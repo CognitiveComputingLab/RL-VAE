@@ -68,7 +68,8 @@ class DecoderAgent(nn.Module):
 class RlVae:
     def __init__(self, device, input_dim, latent_dimensions=2):
         self.device = device
-        self.encoder_agent = EncoderAgent(input_dim, latent_dimensions).to(device)
+        # self.encoder_agent = EncoderAgent(input_dim, latent_dimensions).to(device)
+        self.encoder_agent = MeanEncoderAgent(input_dim, latent_dimensions).to(device)
         self.decoder_agent = DecoderAgent(input_dim, latent_dimensions).to(device)
         self.optimizer = torch.optim.Adam(list(self.encoder_agent.parameters()) + list(self.decoder_agent.parameters()))
 
@@ -80,8 +81,12 @@ class RlVae:
 
         self.transmit_function = self.transmit_identity
         self.reward_function = self.standard_reward_function
-        self.exploration_function = lambda epoch: 1
+        self.exploration_function = self.decreasing_exploration_function
         self.success_weight = 1
+
+        self.min_exploration = 0.1
+        self.starting_exploration_rate = 2
+        self.exploration_decay = 0.99
 
         self.avg_loss_li = []
         self.total_loss_li = []
@@ -115,6 +120,21 @@ class RlVae:
         success = -functional.mse_loss(x_a, x_b, reduction='sum')
         result = torch.sum(surprise) + success * self.success_weight
         return result
+
+    def decreasing_exploration_function(self, epoch):
+        """
+        set the exploration rate to a value that decreases over the epochs
+        """
+        logvar = torch.tensor([self.starting_exploration_rate] * self.latent_dimensions).to(self.device)
+        self.starting_exploration_rate = max(self.min_exploration, self.starting_exploration_rate)
+        return logvar
+
+    def constant_exploration_function(self, epoch):
+        """
+        set the exploration rate to a constant value across all dimensions
+        """
+        logvar = torch.tensor([self.starting_exploration_rate] * self.latent_dimensions).to(self.device)
+        return logvar
 
     @staticmethod
     def re_parameterize(mu, log_var):
@@ -177,7 +197,7 @@ class RlVae:
         plt.plot(range(len(self.avg_loss_li)), self.avg_loss_li)
         plt.xlabel('Epoch')
         plt.ylabel('Average Loss')
-        plt.title('Average Loss per Epoch')
+        plt.title('Average Loss Per Epoch')
         plt.savefig(save_as)
         plt.close()
         self.console_log("Finished plotting loss")
@@ -188,6 +208,9 @@ class RlVae:
         :return:
         """
         self.console_log(f"Starting training for: {self.arch_name}")
+
+        # Store initial weights
+        initial_weights = {name: param.clone() for name, param in self.encoder_agent.named_parameters()}
 
         # training loop
         for epoch in range(epochs):
@@ -235,6 +258,17 @@ class RlVae:
             self.avg_loss_li.append(avg_loss)
             self.console_log(f"total loss: {total_loss}")
             self.console_log(f"average loss: {avg_loss}")
+
+            # # Check and print weight changes
+            # for name, param in self.encoder_agent.named_parameters():
+            #     initial_param = initial_weights[name]
+            #     if not torch.equal(initial_param, param):
+            #         change = torch.norm(param - initial_param).item()
+            #         self.console_log(f"Change in {name}: {change}")
+            #     else:
+            #         self.console_log(f"No change")
+
+            self.starting_exploration_rate *= self.exploration_decay
 
     def save_model(self, path):
         """
