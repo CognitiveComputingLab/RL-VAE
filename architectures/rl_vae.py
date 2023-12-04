@@ -120,15 +120,15 @@ class RlVae:
         """
         return z_a
 
-    def reward_function(self, x_a, x_b, mean, logvar):
+    def reward_function(self, x_a, x_b, mean, logvar, mean_weights):
         """
         the RL-VAE reward function
         """
         variance = torch.exp(logvar)
         exploration = logvar
         surprise = -variance - torch.square(mean)
-        success = -functional.mse_loss(x_a, x_b, reduction='sum')
-        result = torch.sum(exploration + surprise) + success * self.success_weight
+        success = -functional.mse_loss(x_a, x_b)
+        result = torch.sum((exploration + surprise + (success * self.success_weight)) * mean_weights)
         return result
 
     def exploration_function(self, epoch):
