@@ -135,7 +135,8 @@ class RlVae:
         """
         to be implemented in subclasses
         """
-        return
+        logvar = torch.tensor([1] * self.latent_dimensions).to(self.device)
+        return logvar
 
     @staticmethod
     def re_parameterize(mu, log_var):
@@ -226,7 +227,13 @@ class RlVae:
                 x_a = x.to(self.device)
 
                 # encode data point (encoder policy action)
-                result = self.encoder_agent(x_a)
+                mu1, mu2, weights = self.encoder_agent(x_a)
+
+                # determine which mean and corresponding weight to use
+                chosen_indices = torch.argmax(weights, dim=1)
+                result = torch.where(chosen_indices[:, None] == 0, mu1, mu2)
+                selected_weights = torch.gather(weights, 1, chosen_indices[:, None])
+
                 if type(result) is tuple:
                     mean, logvar = result
                 else:
@@ -244,7 +251,8 @@ class RlVae:
 
                 # compute reward / loss
                 reward = self.reward_function(x_a, x_b, mean, logvar)
-                loss = -reward
+                loss = -reward * selected_weights
+                print(loss)
                 total_loss += float(loss)
                 counter += 1
 

@@ -38,7 +38,7 @@ if __name__ == "__main__":
         model = rl_vae.RlVae(device, input_dim)
         # model = de_rl_vae.DecreasingExplorationRLVAE(device, input_dim)
         # model = ce_rl_vae.ConstantExplorationRLVAE(device, input_dim)
-        model.initial_exploration = 2
+        # model.initial_exploration = 2
         model.success_weight = i
         toy_dataset = helper.ToyTorchDataset(toy_data)
         data_loader = torch.utils.data.DataLoader(
@@ -47,7 +47,7 @@ if __name__ == "__main__":
             shuffle=False
         )
         try:
-            model.train(data_loader, epochs=100)
+            model.train(data_loader, epochs=5)
         except KeyboardInterrupt:
             print("stopping early...")
         model.plot_latent(data_loader, f"images/{model.arch_name}-{i}-latent.png")
