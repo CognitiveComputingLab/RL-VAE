@@ -23,8 +23,8 @@ class DecreasingExplorationRLVAE(rl_vae.RlVae):
         """
         variance = torch.exp(logvar)
         surprise = -variance - torch.square(mean)
-        success = -functional.mse_loss(x_a, x_b, reduction='sum')
-        result = torch.sum(surprise) + success * self.success_weight
+        success = -functional.mse_loss(x_a, x_b)
+        result = torch.sum(surprise + success * self.success_weight)
         return result
 
     def exploration_function(self, epoch):
