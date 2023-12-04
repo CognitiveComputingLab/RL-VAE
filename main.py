@@ -35,8 +35,8 @@ if __name__ == "__main__":
     # train RL-VAE system on data
     # for i in range(100, 1100, 100):
     for i in [100]:
-        # model = rl_vae.RlVae(device, input_dim)
-        model = de_rl_vae.DecreasingExplorationRLVAE(device, input_dim)
+        model = rl_vae.RlVae(device, input_dim)
+        # model = de_rl_vae.DecreasingExplorationRLVAE(device, input_dim)
         # model = ce_rl_vae.ConstantExplorationRLVAE(device, input_dim)
         model.initial_exploration = 2
         model.success_weight = i

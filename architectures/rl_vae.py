@@ -52,6 +52,32 @@ class MeanEncoderAgent(nn.Module):
         return mu
 
 
+class KMeanEncoderAgent(nn.Module):
+    def __init__(self, input_dim, latent_dims):
+        super(KMeanEncoderAgent, self).__init__()
+        self.gm1 = GeneralModel(input_dim, [1024, 2048, 2048, 4096])
+        self.gm2 = GeneralModel(input_dim, [1024, 2048, 2048, 4096])
+
+        self.linearM1 = nn.Linear(4096, latent_dims)
+        self.linearM2 = nn.Linear(4096, latent_dims)
+
+        self.weight_gm = GeneralModel(input_dim, [1024, 2048, 2048, 4096])
+        self.linear_weight = nn.Linear(4096, 2)
+
+    def forward(self, x):
+        mu1 = self.gm1(x)
+        mu1 = self.linearM1(mu1)
+
+        mu2 = self.gm2(x)
+        mu2 = self.linearM2(mu2)
+
+        weights = self.weight_gm(x)
+        weights = self.linear_weight(weights)
+        weights = nn.functional.softmax(weights, dim=1)
+
+        return mu1, mu2, weights
+
+
 class DecoderAgent(nn.Module):
     def __init__(self, input_dim, latent_dims):
         super(DecoderAgent, self).__init__()
@@ -67,7 +93,7 @@ class DecoderAgent(nn.Module):
 class RlVae:
     def __init__(self, device, input_dim, latent_dimensions=2):
         self.device = device
-        self.encoder_agent = EncoderAgent(input_dim, latent_dimensions).to(device)
+        self.encoder_agent = KMeanEncoderAgent(input_dim, latent_dimensions).to(device)
         self.decoder_agent = DecoderAgent(input_dim, latent_dimensions).to(device)
         self.optimizer = torch.optim.Adam(list(self.encoder_agent.parameters()) + list(self.decoder_agent.parameters()))
 
