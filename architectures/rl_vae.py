@@ -53,29 +53,27 @@ class MeanEncoderAgent(nn.Module):
 
 
 class KMeanEncoderAgent(nn.Module):
-    def __init__(self, input_dim, latent_dims):
+    def __init__(self, input_dim, latent_dims, k=10):
         super(KMeanEncoderAgent, self).__init__()
-        self.gm1 = GeneralModel(input_dim, [1024, 2048, 2048, 4096])
-        self.gm2 = GeneralModel(input_dim, [1024, 2048, 2048, 4096])
-
-        self.linearM1 = nn.Linear(4096, latent_dims)
-        self.linearM2 = nn.Linear(4096, latent_dims)
-
+        self.k = k
+        self.gm = GeneralModel(input_dim, [1024, 2048, 2048, 4096])
+        self.linearM = nn.Linear(4096, k * latent_dims)
         self.weight_gm = GeneralModel(input_dim, [1024, 2048, 2048, 4096])
-        self.linear_weight = nn.Linear(4096, 2)
+        self.linear_weight = nn.Linear(4096, k)
 
     def forward(self, x):
-        mu1 = self.gm1(x)
-        mu1 = self.linearM1(mu1)
+        mu = self.gm(x)
+        mu = self.linearM(mu)
 
-        mu2 = self.gm2(x)
-        mu2 = self.linearM2(mu2)
+        # Calculate batch size explicitly
+        batch_size = mu.size(0)
+        mu = mu.view(batch_size, self.k, -1)  # Now, -1 will correctly infer latent_dims
 
         weights = self.weight_gm(x)
         weights = self.linear_weight(weights)
         weights = nn.functional.softmax(weights, dim=1)
 
-        return mu1, mu2, weights
+        return mu, weights
 
 
 class DecoderAgent(nn.Module):
@@ -161,11 +159,12 @@ class RlVae:
         """
         self.encoder_agent.to('cpu')
         for i, (x, y) in enumerate(data_loader):
-            # compute encoded datapoint
-            mu1, mu2, weights = self.encoder_agent(x.to('cpu'))
+            # encode data point (encoder policy action)
+            mus, weights = self.encoder_agent(x.to('cpu'))
+            # determine which mean to use for each sample
             chosen_indices = torch.argmax(weights, dim=1)
-            mean = torch.where(chosen_indices[:, None] == 0, mu1, mu2)
-            z = mean.detach()
+            chosen_mus = torch.stack([mus[i, index] for i, index in enumerate(chosen_indices)])
+            z = chosen_mus.detach()
 
             # Assume that `y` contains the colors and is in the shape (batch_size, 4)
             # We take only the first three values assuming they correspond to RGB colors
@@ -212,28 +211,24 @@ class RlVae:
             total_loss = 0
             counter = 0
 
-            for x, y in training_data_loader:
-                # get data
+            for x, _ in training_data_loader:
                 x_a = x.to(self.device)
 
                 # encode data point (encoder policy action)
-                mu1, mu2, weights = self.encoder_agent(x_a)
+                mus, weights = self.encoder_agent(x_a)
 
-                # determine which mean and corresponding weight to use
+                # determine which mean to use for each sample
                 chosen_indices = torch.argmax(weights, dim=1)
-                result = torch.where(chosen_indices[:, None] == 0, mu1, mu2)
-                selected_weights = torch.gather(weights, 1, chosen_indices[:, None])
-
-                mean = result
+                chosen_mus = torch.stack([mus[i, index] for i, index in enumerate(chosen_indices)])
 
                 # transmit through noisy channel
-                z_b = self.transmit_function(mean)
+                z_b = self.transmit_function(chosen_mus)
 
                 # decode (decoder policy action)
                 x_b = self.decoder_agent(z_b)
 
                 # compute reward / loss
-                reward = self.reward_function(x_a, x_b, selected_weights)
+                reward = self.reward_function(x_a, x_b, weights.gather(1, chosen_indices.unsqueeze(1)))
                 loss = -reward
                 total_loss += float(loss)
                 counter += 1
@@ -249,8 +244,8 @@ class RlVae:
             self.avg_loss_li.append(avg_loss)
             self.console_log(f"total loss: {total_loss}")
             self.console_log(f"average loss: {avg_loss}")
-            # if epoch % 10 == 0:
-            #     self.plot_latent(training_data_loader, f"images/{self.arch_name}-epoch-{epoch}-latent.png")
+            if epoch % 10 == 0:
+                self.plot_latent(training_data_loader, f"images/{self.arch_name}-epoch-{epoch}-latent.png")
 
     def save_model(self, path):
         """
