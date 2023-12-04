@@ -120,15 +120,11 @@ class RlVae:
         """
         return z_a
 
-    def reward_function(self, x_a, x_b, mean, logvar, mean_weights):
+    def reward_function(self, x_a, x_b, mean_weights):
         """
         the RL-VAE reward function
         """
-        variance = torch.exp(logvar)
-        exploration = logvar
-        surprise = -variance - torch.square(mean)
-        success = -functional.mse_loss(x_a, x_b)
-        result = torch.sum((exploration + surprise + (success * self.success_weight)) * mean_weights)
+        result = -torch.sum(functional.mse_loss(x_a, x_b) * mean_weights)
         return result
 
     def exploration_function(self, epoch):
@@ -166,14 +162,10 @@ class RlVae:
         self.encoder_agent.to('cpu')
         for i, (x, y) in enumerate(data_loader):
             # compute encoded datapoint
-            result = self.encoder_agent(x.to('cpu'))
-            if type(result) is tuple:
-                mean, logvar = result
-                z = self.re_parameterize(mean, logvar)
-                z = z.to('cpu').detach().numpy()
-            else:
-                mean = result
-                z = mean.detach()
+            mu1, mu2, weights = self.encoder_agent(x.to('cpu'))
+            chosen_indices = torch.argmax(weights, dim=1)
+            mean = torch.where(chosen_indices[:, None] == 0, mu1, mu2)
+            z = mean.detach()
 
             # Assume that `y` contains the colors and is in the shape (batch_size, 4)
             # We take only the first three values assuming they correspond to RGB colors
@@ -187,6 +179,7 @@ class RlVae:
         plt.savefig(save_as)
         plt.close()
         self.console_log("Finished plotting latent")
+        self.encoder_agent.to(self.device)
 
     def plot_loss(self, save_as):
         """
@@ -211,9 +204,6 @@ class RlVae:
         """
         self.console_log(f"Starting training for: {self.arch_name}")
 
-        # Store initial weights
-        initial_weights = {name: param.clone() for name, param in self.encoder_agent.named_parameters()}
-
         # training loop
         for epoch in range(epochs):
             self.console_log(f"---------------------- EPOCH {epoch} ----------------------")
@@ -234,25 +224,17 @@ class RlVae:
                 result = torch.where(chosen_indices[:, None] == 0, mu1, mu2)
                 selected_weights = torch.gather(weights, 1, chosen_indices[:, None])
 
-                if type(result) is tuple:
-                    mean, logvar = result
-                else:
-                    mean = result
-                    logvar = self.exploration_function(epoch)
-
-                # re-parameterize to get a sample from the approximate posterior
-                z_a = self.re_parameterize(mean, logvar)
+                mean = result
 
                 # transmit through noisy channel
-                z_b = self.transmit_function(z_a)
+                z_b = self.transmit_function(mean)
 
                 # decode (decoder policy action)
                 x_b = self.decoder_agent(z_b)
 
                 # compute reward / loss
-                reward = self.reward_function(x_a, x_b, mean, logvar)
-                loss = -reward * selected_weights
-                print(loss)
+                reward = self.reward_function(x_a, x_b, selected_weights)
+                loss = -reward
                 total_loss += float(loss)
                 counter += 1
 
@@ -267,6 +249,8 @@ class RlVae:
             self.avg_loss_li.append(avg_loss)
             self.console_log(f"total loss: {total_loss}")
             self.console_log(f"average loss: {avg_loss}")
+            # if epoch % 10 == 0:
+            #     self.plot_latent(training_data_loader, f"images/{self.arch_name}-epoch-{epoch}-latent.png")
 
     def save_model(self, path):
         """

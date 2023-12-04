@@ -47,7 +47,7 @@ if __name__ == "__main__":
             shuffle=False
         )
         try:
-            model.train(data_loader, epochs=5)
+            model.train(data_loader, epochs=100)
         except KeyboardInterrupt:
             print("stopping early...")
         model.plot_latent(data_loader, f"images/{model.arch_name}-{i}-latent.png")
