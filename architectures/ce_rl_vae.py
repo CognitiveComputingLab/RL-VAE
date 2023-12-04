@@ -8,7 +8,10 @@ class ConstantExplorationRLVAE(rl_vae.RlVae):
         super().__init__(device, input_dim, latent_dimensions)
         self.arch_name = "ConstantExplorationRL-VAE"
         self.encoder_agent = rl_vae.MeanEncoderAgent(input_dim, latent_dimensions).to(self.device)
-        self.optimizer = torch.optim.Adam(list(self.encoder_agent.parameters()) + list(self.decoder_agent.parameters()))
+        self.optimizer = torch.optim.AdamW(
+            list(self.encoder_agent.parameters()) + list(self.decoder_agent.parameters()),
+            weight_decay=1e-2
+        )
         self.initial_exploration = 1
 
     def reward_function(self, x_a, x_b, mean, logvar):

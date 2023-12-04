@@ -18,7 +18,7 @@ if __name__ == "__main__":
     toy_data = data.MoebiusStrip(n=10000, width=1, turns=1)
     # toy_data = data.Circle2D(n=1000)
     toy_data.generate()
-    toy_data.add_noise()
+    # toy_data.add_noise()
     input_dim = toy_data.data.shape[1]
 
     # plot the data
@@ -33,21 +33,24 @@ if __name__ == "__main__":
     # umap.plot()
 
     # train RL-VAE system on data
-    # model = de_rl_vae.DecreasingExplorationRLVAE(device, input_dim)
-    model = ce_rl_vae.ConstantExplorationRLVAE(device, input_dim)
-    model.initial_exploration = 10
-    model.success_weight = 10
-    toy_dataset = helper.ToyTorchDataset(toy_data)
-    data_loader = torch.utils.data.DataLoader(
-        toy_dataset,
-        batch_size=128,
-        shuffle=False
-    )
-    try:
-        model.train(data_loader, epochs=100)
-    except KeyboardInterrupt:
-        print("stopping early...")
-    model.plot_latent(data_loader, f"images/{model.arch_name}-latent.png")
-    model.plot_loss(f"images/{model.arch_name}-loss.png")
+    # for i in range(100, 1100, 100):
+    for i in [100]:
+        # model = rl_vae.RlVae(device, input_dim)
+        model = de_rl_vae.DecreasingExplorationRLVAE(device, input_dim)
+        # model = ce_rl_vae.ConstantExplorationRLVAE(device, input_dim)
+        model.initial_exploration = 2
+        model.success_weight = i
+        toy_dataset = helper.ToyTorchDataset(toy_data)
+        data_loader = torch.utils.data.DataLoader(
+            toy_dataset,
+            batch_size=128,
+            shuffle=False
+        )
+        try:
+            model.train(data_loader, epochs=100)
+        except KeyboardInterrupt:
+            print("stopping early...")
+        model.plot_latent(data_loader, f"images/{model.arch_name}-{i}-latent.png")
+        model.plot_loss(f"images/{model.arch_name}-{i}-loss.png")
 
 

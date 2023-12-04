@@ -1,3 +1,4 @@
+import numpy as np
 import torch
 import torch.nn.functional as functional
 import architectures.rl_vae as rl_vae
@@ -15,10 +16,6 @@ class DecreasingExplorationRLVAE(rl_vae.RlVae):
         self.previous_epoch = 0
         self.min_exploration = 0.1
         self.current_exploration = self.initial_exploration
-
-        self.min_exploration = 0.1
-        self.starting_exploration_rate = 2
-        self.exploration_decay = 0.99
 
     def reward_function(self, x_a, x_b, mean, logvar):
         """
@@ -41,4 +38,5 @@ class DecreasingExplorationRLVAE(rl_vae.RlVae):
         logvar = torch.tensor([self.current_exploration] * self.latent_dimensions).to(self.device)
         self.current_exploration = max(self.min_exploration, self.current_exploration)
         return logvar
+
 
