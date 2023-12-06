@@ -54,27 +54,33 @@ class MeanEncoderAgent(nn.Module):
 
 
 class KMeanEncoderAgent(nn.Module):
-    def __init__(self, input_dim, latent_dims, k=50):
+    def __init__(self, input_dim, latent_dims, k=2):
         super(KMeanEncoderAgent, self).__init__()
         self.k = k
         self.gm = GeneralModel(input_dim, [1024, 2048, 2048, 4096])
         self.linearM = nn.Linear(4096, k * latent_dims)
+        self.linearS = nn.Linear(4096, k * latent_dims)
         self.weight_gm = GeneralModel(input_dim, [1024, 2048, 2048, 4096])
         self.linear_weight = nn.Linear(4096, k)
 
     def forward(self, x):
-        mu = self.gm(x)
-        mu = self.linearM(mu)
+        x2 = self.gm(x)
 
-        # Calculate batch size explicitly
+        # output the means
+        mu = self.linearM(x2)
         batch_size = mu.size(0)
         mu = mu.view(batch_size, self.k, -1)
+
+        # output the log-vars
+        logvar = self.linearS(x2)
+        batch_size = logvar.size(0)
+        logvar = logvar.view(batch_size, self.k, -1)
 
         weights = self.weight_gm(x)
         weights = self.linear_weight(weights)
         weights = nn.functional.softmax(weights, dim=1)
 
-        return mu, weights
+        return mu, logvar, weights
 
 
 class DecoderAgent(nn.Module):
@@ -100,11 +106,11 @@ class RlVae:
         self.input_dim = input_dim
 
         self.verbose = True
-        self.arch_name = "RL-AE-20"
+        self.arch_name = "RL-Multi-VAE-2"
 
         self.success_weight = 1
         self.epsilon = 1
-        self.decay_rate = 0.999
+        self.decay_rate = 0.99
         self.min_epsilon = 0.001
 
         self.avg_loss_li = []
@@ -127,6 +133,16 @@ class RlVae:
         the RL-VAE reward function
         """
         result = -torch.sum(functional.mse_loss(x_a, x_b) * mean_weights)
+        return result
+
+    def reward_function_original(self, x_a, x_b, mean, logvar, mean_weights):
+        """
+        the RL-VAE reward function
+        """
+        variance = torch.exp(logvar)
+        surprise = variance + torch.square(mean)
+        success = functional.mse_loss(x_a, x_b)
+        result = -torch.sum((surprise + (success * self.success_weight)) * mean_weights)
         return result
 
     def exploration_function(self, epoch):
@@ -164,7 +180,7 @@ class RlVae:
         self.encoder_agent.to('cpu')
         for i, (x, y) in enumerate(data_loader):
             # encode data point (encoder policy action)
-            mus, weights = self.encoder_agent(x.to('cpu'))
+            mus, logvar, weights = self.encoder_agent(x.to('cpu'))
             # determine which mean to use for each sample
             chosen_indices = torch.argmax(weights, dim=1)
             chosen_mus = torch.stack([mus[i, index] for i, index in enumerate(chosen_indices)])
@@ -218,9 +234,10 @@ class RlVae:
             for x, _ in training_data_loader:
                 x_a = x.to(self.device)
 
-                mus, weights = self.encoder_agent(x_a)
+                mus, logvar, weights = self.encoder_agent(x_a)
 
                 chosen_mus = []
+                chosen_log_vars = []
                 chosen_indices = []
 
                 for i in range(weights.shape[0]):
@@ -228,26 +245,34 @@ class RlVae:
                         # Randomly select a mean
                         random_index = random.randint(0, weights.shape[1] - 1)
                         chosen_mu = mus[i, random_index]
+                        chosen_log_var = logvar[i, random_index]
                         chosen_indices.append(random_index)
                     else:
                         # Use argmax to select a mean
                         argmax_index = torch.argmax(weights[i])
                         chosen_mu = mus[i, argmax_index]
+                        chosen_log_var = logvar[i, argmax_index]
                         chosen_indices.append(argmax_index)
 
                     chosen_mus.append(chosen_mu)
+                    chosen_log_vars.append(chosen_log_var)
 
                 chosen_mus = torch.stack(chosen_mus)
+                chosen_log_vars = torch.stack(chosen_log_vars)
                 chosen_indices = torch.tensor(chosen_indices).to(self.device)
 
+                # sample / re-parameterize
+                z_a = self.re_parameterize(chosen_mus, chosen_log_vars)
+
                 # transmit through noisy channel
-                z_b = self.transmit_function(chosen_mus)
+                z_b = self.transmit_function(z_a)
 
                 # decode (decoder policy action)
                 x_b = self.decoder_agent(z_b)
 
                 # compute reward / loss
-                reward = self.reward_function(x_a, x_b, weights.gather(1, chosen_indices.unsqueeze(1)))
+                # reward = self.reward_function(x_a, x_b, weights.gather(1, chosen_indices.unsqueeze(1)))
+                reward = self.reward_function_original(x_a, x_b, chosen_mus, chosen_log_vars, weights.gather(1, chosen_indices.unsqueeze(1)))
                 loss = -reward
                 total_loss += float(loss)
                 counter += 1
