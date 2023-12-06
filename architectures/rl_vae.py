@@ -1,3 +1,4 @@
+import random
 import torch
 import torch.nn as nn
 import torch.nn.functional as functional
@@ -53,7 +54,7 @@ class MeanEncoderAgent(nn.Module):
 
 
 class KMeanEncoderAgent(nn.Module):
-    def __init__(self, input_dim, latent_dims, k=10):
+    def __init__(self, input_dim, latent_dims, k=50):
         super(KMeanEncoderAgent, self).__init__()
         self.k = k
         self.gm = GeneralModel(input_dim, [1024, 2048, 2048, 4096])
@@ -67,7 +68,7 @@ class KMeanEncoderAgent(nn.Module):
 
         # Calculate batch size explicitly
         batch_size = mu.size(0)
-        mu = mu.view(batch_size, self.k, -1)  # Now, -1 will correctly infer latent_dims
+        mu = mu.view(batch_size, self.k, -1)
 
         weights = self.weight_gm(x)
         weights = self.linear_weight(weights)
@@ -99,9 +100,12 @@ class RlVae:
         self.input_dim = input_dim
 
         self.verbose = True
-        self.arch_name = "RL-VAE"
+        self.arch_name = "RL-AE-20"
 
         self.success_weight = 1
+        self.epsilon = 1
+        self.decay_rate = 0.999
+        self.min_epsilon = 0.001
 
         self.avg_loss_li = []
         self.total_loss_li = []
@@ -214,12 +218,27 @@ class RlVae:
             for x, _ in training_data_loader:
                 x_a = x.to(self.device)
 
-                # encode data point (encoder policy action)
                 mus, weights = self.encoder_agent(x_a)
 
-                # determine which mean to use for each sample
-                chosen_indices = torch.argmax(weights, dim=1)
-                chosen_mus = torch.stack([mus[i, index] for i, index in enumerate(chosen_indices)])
+                chosen_mus = []
+                chosen_indices = []
+
+                for i in range(weights.shape[0]):
+                    if random.random() < self.epsilon:
+                        # Randomly select a mean
+                        random_index = random.randint(0, weights.shape[1] - 1)
+                        chosen_mu = mus[i, random_index]
+                        chosen_indices.append(random_index)
+                    else:
+                        # Use argmax to select a mean
+                        argmax_index = torch.argmax(weights[i])
+                        chosen_mu = mus[i, argmax_index]
+                        chosen_indices.append(argmax_index)
+
+                    chosen_mus.append(chosen_mu)
+
+                chosen_mus = torch.stack(chosen_mus)
+                chosen_indices = torch.tensor(chosen_indices).to(self.device)
 
                 # transmit through noisy channel
                 z_b = self.transmit_function(chosen_mus)
@@ -245,7 +264,10 @@ class RlVae:
             self.console_log(f"total loss: {total_loss}")
             self.console_log(f"average loss: {avg_loss}")
             if epoch % 10 == 0:
-                self.plot_latent(training_data_loader, f"images/{self.arch_name}-epoch-{epoch}-latent.png")
+                self.plot_latent(training_data_loader, f"images/{self.arch_name}-epoch-{epoch}-epsilon-{round(self.epsilon, 2)}-latent.png")
+
+            # decrease exploration
+            self.epsilon = max(self.min_epsilon, self.epsilon * self.decay_rate)
 
     def save_model(self, path):
         """
