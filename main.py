@@ -15,7 +15,7 @@ print("using device: ", device)
 
 if __name__ == "__main__":
     # generate data to be embedded
-    toy_data = data.MoebiusStrip(n=10000, width=1, turns=1)
+    toy_data = data.MoebiusStrip(n=10000, width=1, turns=3)
     # toy_data = data.Circle2D(n=1000)
     toy_data.generate()
     # toy_data.add_noise()

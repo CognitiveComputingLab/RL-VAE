@@ -54,7 +54,7 @@ class MeanEncoderAgent(nn.Module):
 
 
 class KMeanEncoderAgent(nn.Module):
-    def __init__(self, input_dim, latent_dims, k=2):
+    def __init__(self, input_dim, latent_dims, k=50):
         super(KMeanEncoderAgent, self).__init__()
         self.k = k
         self.gm = GeneralModel(input_dim, [1024, 2048, 2048, 4096])
@@ -106,11 +106,11 @@ class RlVae:
         self.input_dim = input_dim
 
         self.verbose = True
-        self.arch_name = "RL-Multi-VAE-2"
+        self.arch_name = "RL-Multi-VAE-50"
 
         self.success_weight = 1
         self.epsilon = 1
-        self.decay_rate = 0.99
+        self.decay_rate = 0.999
         self.min_epsilon = 0.001
 
         self.avg_loss_li = []
