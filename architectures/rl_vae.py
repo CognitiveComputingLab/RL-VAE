@@ -1,3 +1,5 @@
+import datetime
+import random
 import torch
 import torch.nn as nn
 import torch.nn.functional as functional
@@ -52,6 +54,36 @@ class MeanEncoderAgent(nn.Module):
         return mu
 
 
+class KMeanEncoderAgent(nn.Module):
+    def __init__(self, input_dim, latent_dims, k=50):
+        super(KMeanEncoderAgent, self).__init__()
+        self.k = k
+        self.gm = GeneralModel(input_dim, [1024, 2048, 2048, 4096])
+        self.linearM = nn.Linear(4096, k * latent_dims)
+        self.linearS = nn.Linear(4096, k * latent_dims)
+        self.weight_gm = GeneralModel(input_dim, [1024, 2048, 2048, 4096])
+        self.linear_weight = nn.Linear(4096, k)
+
+    def forward(self, x):
+        x2 = self.gm(x)
+
+        # output the means
+        mu = self.linearM(x2)
+        batch_size = mu.size(0)
+        mu = mu.view(batch_size, self.k, -1)
+
+        # output the log-vars
+        logvar = self.linearS(x2)
+        batch_size = logvar.size(0)
+        logvar = logvar.view(batch_size, self.k, -1)
+
+        weights = self.weight_gm(x)
+        weights = self.linear_weight(weights)
+        weights = nn.functional.softmax(weights, dim=1)
+
+        return mu, logvar, weights
+
+
 class DecoderAgent(nn.Module):
     def __init__(self, input_dim, latent_dims):
         super(DecoderAgent, self).__init__()
@@ -67,7 +99,7 @@ class DecoderAgent(nn.Module):
 class RlVae:
     def __init__(self, device, input_dim, latent_dimensions=2):
         self.device = device
-        self.encoder_agent = EncoderAgent(input_dim, latent_dimensions).to(device)
+        self.encoder_agent = KMeanEncoderAgent(input_dim, latent_dimensions).to(device)
         self.decoder_agent = DecoderAgent(input_dim, latent_dimensions).to(device)
         self.optimizer = torch.optim.Adam(list(self.encoder_agent.parameters()) + list(self.decoder_agent.parameters()))
 
@@ -75,9 +107,12 @@ class RlVae:
         self.input_dim = input_dim
 
         self.verbose = True
-        self.arch_name = "RL-VAE"
+        self.arch_name = "RL-Multi-VAE-50"
 
         self.success_weight = 1
+        self.epsilon = 1
+        self.decay_rate = 0.999
+        self.min_epsilon = 0.001
 
         self.avg_loss_li = []
         self.total_loss_li = []
@@ -94,22 +129,29 @@ class RlVae:
         """
         return z_a
 
-    def reward_function(self, x_a, x_b, mean, logvar):
+    def reward_function(self, x_a, x_b, mean_weights):
+        """
+        the RL-VAE reward function
+        """
+        result = -torch.sum(functional.mse_loss(x_a, x_b) * mean_weights)
+        return result
+
+    def reward_function_original(self, x_a, x_b, mean, logvar, mean_weights):
         """
         the RL-VAE reward function
         """
         variance = torch.exp(logvar)
-        exploration = logvar
-        surprise = -variance - torch.square(mean)
-        success = -functional.mse_loss(x_a, x_b)
-        result = torch.sum(exploration + surprise + success * self.success_weight)
+        surprise = variance + torch.square(mean)
+        success = functional.mse_loss(x_a, x_b)
+        result = -torch.sum((surprise + (success * self.success_weight)) * mean_weights)
         return result
 
     def exploration_function(self, epoch):
         """
         to be implemented in subclasses
         """
-        return
+        logvar = torch.tensor([1] * self.latent_dimensions).to(self.device)
+        return logvar
 
     @staticmethod
     def re_parameterize(mu, log_var):
@@ -138,15 +180,12 @@ class RlVae:
         """
         self.encoder_agent.to('cpu')
         for i, (x, y) in enumerate(data_loader):
-            # compute encoded datapoint
-            result = self.encoder_agent(x.to('cpu'))
-            if type(result) is tuple:
-                mean, logvar = result
-                z = self.re_parameterize(mean, logvar)
-                z = z.to('cpu').detach().numpy()
-            else:
-                mean = result
-                z = mean.detach()
+            # encode data point (encoder policy action)
+            mus, logvar, weights = self.encoder_agent(x.to('cpu'))
+            # determine which mean to use for each sample
+            chosen_indices = torch.argmax(weights, dim=1)
+            chosen_mus = torch.stack([mus[i, index] for i, index in enumerate(chosen_indices)])
+            z = chosen_mus.detach()
 
             # Assume that `y` contains the colors and is in the shape (batch_size, 4)
             # We take only the first three values assuming they correspond to RGB colors
@@ -160,6 +199,7 @@ class RlVae:
         plt.savefig(save_as)
         plt.close()
         self.console_log("Finished plotting latent")
+        self.encoder_agent.to(self.device)
 
     def plot_loss(self, save_as):
         """
@@ -184,9 +224,6 @@ class RlVae:
         """
         self.console_log(f"Starting training for: {self.arch_name}")
 
-        # Store initial weights
-        initial_weights = {name: param.clone() for name, param in self.encoder_agent.named_parameters()}
-
         # training loop
         for epoch in range(epochs):
             self.console_log(f"---------------------- EPOCH {epoch} ----------------------")
@@ -195,20 +232,38 @@ class RlVae:
             total_loss = 0
             counter = 0
 
-            for x, y in training_data_loader:
-                # get data
+            for x, _ in training_data_loader:
                 x_a = x.to(self.device)
 
-                # encode data point (encoder policy action)
-                result = self.encoder_agent(x_a)
-                if type(result) is tuple:
-                    mean, logvar = result
-                else:
-                    mean = result
-                    logvar = self.exploration_function(epoch)
+                mus, logvar, weights = self.encoder_agent(x_a)
 
-                # re-parameterize to get a sample from the approximate posterior
-                z_a = self.re_parameterize(mean, logvar)
+                chosen_mus = []
+                chosen_log_vars = []
+                chosen_indices = []
+
+                for i in range(weights.shape[0]):
+                    if random.random() < self.epsilon:
+                        # Randomly select a mean
+                        random_index = random.randint(0, weights.shape[1] - 1)
+                        chosen_mu = mus[i, random_index]
+                        chosen_log_var = logvar[i, random_index]
+                        chosen_indices.append(random_index)
+                    else:
+                        # Use argmax to select a mean
+                        argmax_index = torch.argmax(weights[i])
+                        chosen_mu = mus[i, argmax_index]
+                        chosen_log_var = logvar[i, argmax_index]
+                        chosen_indices.append(argmax_index)
+
+                    chosen_mus.append(chosen_mu)
+                    chosen_log_vars.append(chosen_log_var)
+
+                chosen_mus = torch.stack(chosen_mus)
+                chosen_log_vars = torch.stack(chosen_log_vars)
+                chosen_indices = torch.tensor(chosen_indices).to(self.device)
+
+                # sample / re-parameterize
+                z_a = self.re_parameterize(chosen_mus, chosen_log_vars)
 
                 # transmit through noisy channel
                 z_b = self.transmit_function(z_a)
@@ -217,7 +272,8 @@ class RlVae:
                 x_b = self.decoder_agent(z_b)
 
                 # compute reward / loss
-                reward = self.reward_function(x_a, x_b, mean, logvar)
+                # reward = self.reward_function(x_a, x_b, weights.gather(1, chosen_indices.unsqueeze(1)))
+                reward = self.reward_function_original(x_a, x_b, chosen_mus, chosen_log_vars, weights.gather(1, chosen_indices.unsqueeze(1)))
                 loss = -reward
                 total_loss += float(loss)
                 counter += 1
@@ -233,10 +289,16 @@ class RlVae:
             self.avg_loss_li.append(avg_loss)
             self.console_log(f"total loss: {total_loss}")
             self.console_log(f"average loss: {avg_loss}")
+            if epoch % 10 == 0:
+                self.plot_latent(training_data_loader, f"images/{self.arch_name}-epoch-{epoch}-epsilon-{round(self.epsilon, 2)}-latent.png")
+
+            # decrease exploration
+            self.epsilon = max(self.min_epsilon, self.epsilon * self.decay_rate)
 
     def save_model(self, path):
         """
         save the encoder and decoder separately
         """
-        torch.save(self.encoder_agent.state_dict(), f"{path}/{self.arch_name}-encoder.png")
-        torch.save(self.decoder_agent.state_dict(), f"{path}/{self.arch_name}-decoder.png")
+        time_now = datetime.datetime.now().strftime('%m_%d_%Y_%H_%M_%S')
+        torch.save(self.encoder_agent.state_dict(), f"{path}/{self.arch_name}-encoder-{time_now}.pth")
+        torch.save(self.decoder_agent.state_dict(), f"{path}/{self.arch_name}-decoder-{time_now}.pth")
