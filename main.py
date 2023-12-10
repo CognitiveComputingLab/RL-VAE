@@ -1,3 +1,4 @@
+import datetime
 import torch
 
 from toy_data import data
@@ -23,6 +24,7 @@ if __name__ == "__main__":
 
     # plot the data
     # plotting.mpl_2d_plot(toy_data)
+    # toy_data.plot()
 
     # fig = plotting.scatter3d(toy_data)
     # fig.show()
@@ -47,10 +49,12 @@ if __name__ == "__main__":
             shuffle=False
         )
         try:
-            model.train(data_loader, epochs=1000)
+            model.train(data_loader, epochs=2000)
         except KeyboardInterrupt:
             print("stopping early...")
-        model.plot_latent(data_loader, f"images/{model.arch_name}-{i}-latent.png")
-        model.plot_loss(f"images/{model.arch_name}-{i}-loss.png")
+        model.plot_latent(data_loader, f"images/{model.arch_name}-latent.png")
+        model.plot_loss(f"images/{model.arch_name}-loss.png")
+        # save model
+        model.save_model(f"models/")
 
 

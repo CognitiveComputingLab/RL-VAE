@@ -1,3 +1,4 @@
+import datetime
 import random
 import torch
 import torch.nn as nn
@@ -298,5 +299,6 @@ class RlVae:
         """
         save the encoder and decoder separately
         """
-        torch.save(self.encoder_agent.state_dict(), f"{path}/{self.arch_name}-encoder.png")
-        torch.save(self.decoder_agent.state_dict(), f"{path}/{self.arch_name}-decoder.png")
+        time_now = datetime.datetime.now().strftime('%m_%d_%Y_%H_%M_%S')
+        torch.save(self.encoder_agent.state_dict(), f"{path}/{self.arch_name}-encoder-{time_now}.pth")
+        torch.save(self.decoder_agent.state_dict(), f"{path}/{self.arch_name}-decoder-{time_now}.pth")
