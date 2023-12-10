@@ -1,6 +1,6 @@
 import abc
 
-from toy_data.util import DynamicImporter
+from util import DynamicImporter
 
 plt = DynamicImporter('matplotlib.pyplot')
 umap = DynamicImporter('umap')

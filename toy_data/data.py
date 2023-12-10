@@ -1,8 +1,9 @@
 import abc
+
 import numpy as np
 
-from toy_data.plotting import scatter3d, mpl_2d_plot
-from toy_data.util import DynamicImporter
+from plotting import scatter3d, mpl_2d_plot, change_lightness
+from util import DynamicImporter
 
 plt = DynamicImporter('matplotlib.pyplot')
 cm = DynamicImporter('matplotlib.cm')
@@ -67,12 +68,45 @@ class ToyData(abc.ABC):
         raise NotImplementedError("No plotting function defined for this dataset")
 
 
-class Circle2D(ToyData):
+class SphereND(ToyData):
+
+    def __init__(self, n, d):
+        super().__init__(n=n)
+        self.d = d
 
     def generate(self):
-        self._data = np.random.normal(size=(self.n, 2))
+        self._data = np.random.normal(size=(self.n, self.d))
         self._data /= np.sqrt((self._data ** 2).sum(axis=1, keepdims=True))
         return self
+
+
+class Sphere3D(SphereND):
+
+    def __init__(self, n):
+        super().__init__(n=n, d=3)
+
+    @property
+    def labels(self):
+        return np.concatenate([
+            ((np.arctan2(self.data[:, 1], self.data[:, 0]) / np.pi + 1) / 2)[:, None],
+            (np.arctan2(self.data[:, 2], np.sqrt(self.data[:, 1] ** 2 + self.data[:, 0] ** 2)) / np.pi + 0.5)[:, None],
+        ],
+            axis=1)
+
+    @property
+    def colors(self):
+        colors = self._label_color_mapper(labels=self.labels[:, 0], cmap='hsv')
+        colors = change_lightness(colors=colors, t=self.labels[:, 1])
+        return colors
+
+    def plot(self):
+        scatter3d(self).show()
+
+
+class Circle2D(SphereND):
+
+    def __init__(self, n):
+        super().__init__(n=n, d=2)
 
     @property
     def labels(self):
@@ -137,12 +171,17 @@ class CircleND(ToyData):
 
 class MoebiusStrip(ToyData):
 
-    def __init__(self, n=500, width=1, turns=1/2, color_scale=0.8):
+    def __init__(self, n=500, width=1, turns=1/2, color_scale=None):
         super().__init__(n=n)
         self.width = width
         self.turns = turns
         if int(2 * turns) != 2 * turns:
             raise ValueError(f"'turns' should be a multiple of 1/2 but is {turns}")
+        if color_scale is None:
+            if int(turns) == turns:
+                color_scale = 0.8
+            else:
+                color_scale = 1.
         self.color_scale = color_scale
 
     def generate(self):
@@ -163,20 +202,22 @@ class MoebiusStrip(ToyData):
         if int(self.turns) == self.turns:
             self._labels = np.concatenate([unit_main_angle[:, None], unit_offset[:, None]], axis=1)
         else:
-            self._labels = np.concatenate([unit_main_angle[:, None], (2 * np.abs(unit_offset - 0.5))[:, None]], axis=1)
+            pos = unit_offset > 0.5
+            unit_main_angle_half = unit_main_angle / 2
+            unit_main_angle_half[pos] += 0.5
+            self._labels = np.concatenate([unit_main_angle_half[:, None], (2 * np.abs(unit_offset - 0.5))[:, None]], axis=1)
         return self
 
     @property
     def colors(self):
-        colors = self._label_color_mapper(labels=self.labels[:, 0], cmap='hsv')
-        t = self.labels[:, 1]
-        pos = t > 0.5
-        neg = t <= 0.5
-        t_pos = 2 * (t[pos] - 0.5) * self.color_scale
-        t_neg = (1 - 2 * t[neg]) * self.color_scale
-        rgb = colors[:, 0:3]
-        rgb[pos] = (1 - t_pos)[:, None] * rgb[pos] + t_pos[:, None] * np.zeros_like(rgb[pos])
-        rgb[neg] = (1 - t_neg)[:, None] * rgb[neg] + t_neg[:, None] * np.ones_like(rgb[neg])
+        if self.color_scale == "3D":
+            colors = self.data.copy()
+            for i in range(3):
+                colors[:, i] -= np.min(colors[:, i])
+                colors[:, i] /= np.max(colors[:, i])
+        else:
+            colors = self._label_color_mapper(labels=self.labels[:, 0], cmap='hsv')
+            colors = change_lightness(colors=colors, t=1 - self.labels[:, 1], scale=self.color_scale)
         return colors
 
     def plot(self):

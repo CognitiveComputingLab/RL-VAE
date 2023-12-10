@@ -1,7 +1,31 @@
-from toy_data.util import DynamicImporter
+import numpy as np
+
+from util import DynamicImporter
 plt = DynamicImporter('matplotlib.pyplot')
 cm = DynamicImporter('matplotlib.cm')
 go = DynamicImporter('plotly.graph_objects')
+
+
+def change_lightness(colors, t, scale=1):
+    colors = np.asarray(colors)
+    t = np.asarray(t)
+    pos = t > 0.5
+    neg = t <= 0.5
+    t_pos = 2 * (t[pos] - 0.5) * scale
+    t_neg = (1 - 2 * t[neg]) * scale
+    new_colors = colors.copy()[:, 0:3]
+    new_colors[pos] = (1 - t_pos)[:, None] * new_colors[pos] + t_pos[:, None] * np.ones_like(new_colors[pos])
+    new_colors[neg] = (1 - t_neg)[:, None] * new_colors[neg] + t_neg[:, None] * np.zeros_like(new_colors[neg])
+    return new_colors
+
+
+def change_saturation(colors, t):
+    colors = np.asarray(colors)
+    t = np.asarray(t)
+    new_colors = colors.copy()[:, 0:3]
+    mean = new_colors.mean(axis=1)
+    new_colors = (1 - t)[:, None] * new_colors + t[:, None] * np.ones_like(new_colors) * mean[:, None]
+    return new_colors
 
 
 def scatter3d(dataset=None, data=None, fig=None, layout=(), **kwargs):

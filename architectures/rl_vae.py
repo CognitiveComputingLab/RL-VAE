@@ -129,11 +129,11 @@ class RlVae:
         """
         return z_a
 
-    def reward_function(self, x_a, x_b, mean_weights):
+    def reward_function(self, x_a, x_b):
         """
         the RL-VAE reward function
         """
-        result = -torch.sum(functional.mse_loss(x_a, x_b) * mean_weights)
+        result = -torch.sum(functional.mse_loss(x_a, x_b))
         return result
 
     def reward_function_original(self, x_a, x_b, mean, logvar, mean_weights):
@@ -272,7 +272,6 @@ class RlVae:
                 x_b = self.decoder_agent(z_b)
 
                 # compute reward / loss
-                # reward = self.reward_function(x_a, x_b, weights.gather(1, chosen_indices.unsqueeze(1)))
                 reward = self.reward_function_original(x_a, x_b, chosen_mus, chosen_log_vars, weights.gather(1, chosen_indices.unsqueeze(1)))
                 loss = -reward
                 total_loss += float(loss)
