@@ -24,7 +24,7 @@ class ConstantExplorationRLVAE(rl_vae.RlVae):
         result = torch.sum(surprise + success * self.success_weight)
         return result
 
-    def exploration_function(self, epoch):
+    def exploration_function(self, mus, logvar, weights, epoch):
         """
         set the exploration rate to a constant value across all dimensions
         """

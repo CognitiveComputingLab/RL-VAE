@@ -55,7 +55,7 @@ class MeanEncoderAgent(nn.Module):
 
 
 class KMeanEncoderAgent(nn.Module):
-    def __init__(self, input_dim, latent_dims, k=50):
+    def __init__(self, input_dim, latent_dims, k):
         super(KMeanEncoderAgent, self).__init__()
         self.k = k
         self.gm = GeneralModel(input_dim, [1024, 2048, 2048, 4096])
@@ -97,9 +97,9 @@ class DecoderAgent(nn.Module):
 
 
 class RlVae:
-    def __init__(self, device, input_dim, latent_dimensions=2):
+    def __init__(self, device, input_dim, num_heads, latent_dimensions=2):
         self.device = device
-        self.encoder_agent = KMeanEncoderAgent(input_dim, latent_dimensions).to(device)
+        self.encoder_agent = KMeanEncoderAgent(input_dim, latent_dimensions, num_heads).to(device)
         self.decoder_agent = DecoderAgent(input_dim, latent_dimensions).to(device)
         self.optimizer = torch.optim.Adam(list(self.encoder_agent.parameters()) + list(self.decoder_agent.parameters()))
 
@@ -110,9 +110,6 @@ class RlVae:
         self.arch_name = "RL-Multi-VAE-50"
 
         self.success_weight = 1
-        self.epsilon = 1
-        self.decay_rate = 0.999
-        self.min_epsilon = 0.001
 
         self.avg_loss_li = []
         self.total_loss_li = []
@@ -129,14 +126,7 @@ class RlVae:
         """
         return z_a
 
-    def reward_function(self, x_a, x_b):
-        """
-        the RL-VAE reward function
-        """
-        result = -torch.sum(functional.mse_loss(x_a, x_b))
-        return result
-
-    def reward_function_original(self, x_a, x_b, mean, logvar, mean_weights):
+    def reward_function(self, x_a, x_b, mean, logvar, mean_weights):
         """
         the RL-VAE reward function
         """
@@ -146,12 +136,30 @@ class RlVae:
         result = -torch.sum((surprise + (success * self.success_weight)) * mean_weights)
         return result
 
-    def exploration_function(self, epoch):
+    def exploration_function(self, mus, logvar, weights, epoch):
         """
-        to be implemented in subclasses
+        handles exploration of actions
+        should be changed in subclasses
+        in this case just the highest weight is chosen (no exploration)
         """
-        logvar = torch.tensor([1] * self.latent_dimensions).to(self.device)
-        return logvar
+        chosen_mus = []
+        chosen_log_vars = []
+        chosen_indices = []
+
+        for i in range(weights.shape[0]):
+            # Use argmax to select a mean
+            argmax_index = torch.argmax(weights[i])
+            chosen_mu = mus[i, argmax_index]
+            chosen_log_var = logvar[i, argmax_index]
+            chosen_indices.append(argmax_index)
+
+            chosen_mus.append(chosen_mu)
+            chosen_log_vars.append(chosen_log_var)
+
+        chosen_mus = torch.stack(chosen_mus)
+        chosen_log_vars = torch.stack(chosen_log_vars)
+        chosen_indices = torch.tensor(chosen_indices).to(self.device)
+        return chosen_mus, chosen_log_vars, chosen_indices
 
     @staticmethod
     def re_parameterize(mu, log_var):
@@ -235,32 +243,11 @@ class RlVae:
             for x, _ in training_data_loader:
                 x_a = x.to(self.device)
 
+                # run through neural network
                 mus, logvar, weights = self.encoder_agent(x_a)
 
-                chosen_mus = []
-                chosen_log_vars = []
-                chosen_indices = []
-
-                for i in range(weights.shape[0]):
-                    if random.random() < self.epsilon:
-                        # Randomly select a mean
-                        random_index = random.randint(0, weights.shape[1] - 1)
-                        chosen_mu = mus[i, random_index]
-                        chosen_log_var = logvar[i, random_index]
-                        chosen_indices.append(random_index)
-                    else:
-                        # Use argmax to select a mean
-                        argmax_index = torch.argmax(weights[i])
-                        chosen_mu = mus[i, argmax_index]
-                        chosen_log_var = logvar[i, argmax_index]
-                        chosen_indices.append(argmax_index)
-
-                    chosen_mus.append(chosen_mu)
-                    chosen_log_vars.append(chosen_log_var)
-
-                chosen_mus = torch.stack(chosen_mus)
-                chosen_log_vars = torch.stack(chosen_log_vars)
-                chosen_indices = torch.tensor(chosen_indices).to(self.device)
+                # handle exploration
+                chosen_mus, chosen_log_vars, chosen_indices = self.exploration_function(mus, logvar, weights, epoch)
 
                 # sample / re-parameterize
                 z_a = self.re_parameterize(chosen_mus, chosen_log_vars)
@@ -272,7 +259,7 @@ class RlVae:
                 x_b = self.decoder_agent(z_b)
 
                 # compute reward / loss
-                reward = self.reward_function_original(x_a, x_b, chosen_mus, chosen_log_vars, weights.gather(1, chosen_indices.unsqueeze(1)))
+                reward = self.reward_function(x_a, x_b, chosen_mus, chosen_log_vars, weights.gather(1, chosen_indices.unsqueeze(1)))
                 loss = -reward
                 total_loss += float(loss)
                 counter += 1
@@ -290,9 +277,6 @@ class RlVae:
             self.console_log(f"average loss: {avg_loss}")
             if epoch % 10 == 0:
                 self.plot_latent(training_data_loader, f"images/{self.arch_name}-epoch-{epoch}-epsilon-{round(self.epsilon, 2)}-latent.png")
-
-            # decrease exploration
-            self.epsilon = max(self.min_epsilon, self.epsilon * self.decay_rate)
 
     def save_model(self, path):
         """

@@ -1,6 +1,6 @@
 import numpy as np
 
-from util import DynamicImporter
+from toy_data.util import DynamicImporter
 plt = DynamicImporter('matplotlib.pyplot')
 cm = DynamicImporter('matplotlib.cm')
 go = DynamicImporter('plotly.graph_objects')

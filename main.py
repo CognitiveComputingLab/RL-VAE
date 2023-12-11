@@ -16,10 +16,8 @@ print("using device: ", device)
 
 if __name__ == "__main__":
     # generate data to be embedded
-    toy_data = data.MoebiusStrip(n=10000, width=1, turns=3)
-    # toy_data = data.Circle2D(n=1000)
-    toy_data.generate()
-    # toy_data.add_noise()
+    # toy_data = data.MoebiusStrip(n=10000, width=1, turns=3).generate()
+    toy_data = data.Sphere3D(10000).generate().add_noise(0.2)
     input_dim = toy_data.data.shape[1]
 
     # plot the data
@@ -35,12 +33,11 @@ if __name__ == "__main__":
     # umap.plot()
 
     # train RL-VAE system on data
-    # for i in range(100, 1100, 100):
     for i in [1]:
-        model = rl_vae.RlVae(device, input_dim)
-        # model = de_rl_vae.DecreasingExplorationRLVAE(device, input_dim)
+        # model = vae.VaeSystem(device, input_dim)
+        # model = rl_vae.RlVae(device, input_dim)
+        model = de_rl_vae.DecreasingExplorationRLVAE(device, input_dim, 50)
         # model = ce_rl_vae.ConstantExplorationRLVAE(device, input_dim)
-        # model.initial_exploration = 2
         model.success_weight = i
         toy_dataset = helper.ToyTorchDataset(toy_data)
         data_loader = torch.utils.data.DataLoader(
@@ -49,12 +46,12 @@ if __name__ == "__main__":
             shuffle=False
         )
         try:
-            model.train(data_loader, epochs=1000)
+            model.train(data_loader, epochs=500)
         except KeyboardInterrupt:
             print("stopping early...")
         model.plot_latent(data_loader, f"images/{model.arch_name}-latent.png")
         model.plot_loss(f"images/{model.arch_name}-loss.png")
         # save model
-        model.save_model(f"models/")
+        # model.save_model(f"models/")
 
 

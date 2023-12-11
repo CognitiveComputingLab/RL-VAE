@@ -2,8 +2,8 @@ import abc
 
 import numpy as np
 
-from plotting import scatter3d, mpl_2d_plot, change_lightness
-from util import DynamicImporter
+from toy_data.plotting import scatter3d, mpl_2d_plot, change_lightness
+from toy_data.util import DynamicImporter
 
 plt = DynamicImporter('matplotlib.pyplot')
 cm = DynamicImporter('matplotlib.cm')

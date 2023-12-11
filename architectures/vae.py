@@ -83,6 +83,7 @@ class VaeSystem:
         self.input_dim = input_dim
         self.autoencoder = VariationalAutoencoder(input_dim, self.latent_dimensions).to(device)
         self.optimiser = torch.optim.Adam(self.autoencoder.parameters())
+        self.success_weight = 1
 
         self.avg_loss_li = []
         self.total_loss_li = []
@@ -128,7 +129,7 @@ class VaeSystem:
 
                 # get loss
                 kl_divergence = 0.5 * torch.sum(-1 - log_var + mu.pow(2) + log_var.exp())
-                loss = functional.mse_loss(x_hat, x, reduction='sum') + kl_divergence
+                loss = functional.mse_loss(x_hat, x, reduction='sum') * self.success_weight + kl_divergence
                 total_loss += float(loss)
                 counter += 1
 

@@ -2,9 +2,9 @@ import abc
 
 import numpy as np
 
-from data import ToyData, Circle2D
-from plotting import scatter3d
-from util import DynamicImporter
+from toy_data.data import ToyData, Circle2D
+from toy_data.plotting import scatter3d
+from toy_data.util import DynamicImporter
 
 plt = DynamicImporter('matplotlib.pyplot')
 
