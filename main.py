@@ -17,7 +17,8 @@ print("using device: ", device)
 if __name__ == "__main__":
     # generate data to be embedded
     # toy_data = data.MoebiusStrip(n=10000, width=1, turns=3).generate()
-    toy_data = data.Sphere3D(10000).generate().add_noise(0.2)
+    # toy_data = data.Sphere3D(10000).generate().add_noise(0.2)
+    toy_data = data.MusicData(10000).generate()
     input_dim = toy_data.data.shape[1]
 
     # plot the data
@@ -29,11 +30,11 @@ if __name__ == "__main__":
 
     # use UMAP embedding
     umap = embedding.UMAP(toy_data)
-    # umap.fit()
-    # umap.plot()
+    umap.fit()
+    umap.plot()
 
     # train RL-VAE system on data
-    for i in [1]:
+    """for i in [1]:
         # model = vae.VaeSystem(device, input_dim)
         # model = rl_vae.RlVae(device, input_dim)
         # model = de_rl_vae.DecreasingExplorationRLVAE(device, input_dim, 50)
@@ -53,6 +54,6 @@ if __name__ == "__main__":
         model.plot_latent(data_loader, f"images/{model.arch_name}-latent.png")
         model.plot_loss(f"images/{model.arch_name}-loss.png")
         # save model
-        # model.save_model(f"models/")
+        # model.save_model(f"models/")"""
 
 

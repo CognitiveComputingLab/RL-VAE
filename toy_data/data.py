@@ -5,6 +5,9 @@ import numpy as np
 from toy_data.plotting import scatter3d, mpl_2d_plot, change_lightness
 from toy_data.util import DynamicImporter
 
+from pitchscapes.keyfinding import KeyEstimator
+from pitchscapes.plotting import key_scores_to_color
+
 plt = DynamicImporter('matplotlib.pyplot')
 cm = DynamicImporter('matplotlib.cm')
 
@@ -66,6 +69,26 @@ class ToyData(abc.ABC):
 
     def plot(self):
         raise NotImplementedError("No plotting function defined for this dataset")
+
+
+class MusicData(ToyData):
+    def __init__(self, n):
+        super().__init__(n)
+        self.n = n
+
+    def generate(self):
+        data_path = "data/data_WTK_r200_p0.0_s0.03_c0_sparse_corpus.npy"
+        self._data = np.load(data_path)
+        if self.n < len(self._data):
+            self._data = self._data[:self.n, :]
+        return self
+
+    @property
+    def colors(self):
+        k = KeyEstimator()
+        scores = k.get_score(self.data)
+        colors = key_scores_to_color(scores, circle_of_fifths=True)
+        return colors
 
 
 class SphereND(ToyData):
