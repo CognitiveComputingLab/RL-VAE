@@ -30,7 +30,7 @@ class DecreasingExplorationRLVAE(rl_vae.RlVae):
 
     def exploration_function(self, mus, logvar, weights, epoch):
         """
-        set the exploration rate to a constant value across all dimensions
+        explore less as time passes
         """
         # decrease exploration every new epoch
         if self.previous_epoch < epoch:
