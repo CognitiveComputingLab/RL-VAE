@@ -35,9 +35,9 @@ if __name__ == "__main__":
 
     # train RL-VAE system on data
     for i in [1]:
-        # model = vae.VaeSystem(device, input_dim)
+        model = vae.VaeSystem(device, input_dim)
         # model = rl_vae.RlVae(device, input_dim, 1)
-        model = de_rl_vae.DecreasingExplorationRLVAE(device, input_dim, 3)
+        # model = de_rl_vae.DecreasingExplorationRLVAE(device, input_dim, 3)
         # model = ce_rl_vae.ConstantExplorationRLVAE(device, input_dim)
         # model = distance_rl_vae.DistanceRLVAE(device, input_dim, 5)
 

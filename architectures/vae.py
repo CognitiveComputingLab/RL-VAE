@@ -134,7 +134,7 @@ class VaeSystem:
 
                 # get loss
                 kl_divergence = 0.5 * torch.sum(-1 - log_var + mu.pow(2) + log_var.exp())
-                loss = functional.mse_loss(x_hat, x, reduction='sum') * self.success_weight + kl_divergence
+                loss = functional.mse_loss(x_hat, x, reduction='sum') * self.success_weight
                 total_loss += float(loss)
                 counter += 1
 
