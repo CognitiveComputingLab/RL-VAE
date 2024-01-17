@@ -231,6 +231,10 @@ class RlVae:
         :return:
         """
         self.console_log(f"Starting training for: {self.arch_name}")
+        mu_list = []
+        logvar_list = []
+        weight_list = []
+        index_list = []
 
         # training loop
         for epoch in range(epochs):
@@ -245,9 +249,13 @@ class RlVae:
 
                 # run through neural network
                 mus, logvar, weights = self.encoder_agent(x_a)
+                mu_list.append(mus)
+                logvar_list.append(logvar)
+                weight_list.append(weights)
 
                 # handle exploration
                 chosen_mus, chosen_log_vars, chosen_indices = self.exploration_function(mus, logvar, weights, epoch)
+                index_list.append(chosen_indices)
 
                 # sample / re-parameterize
                 z_a = self.re_parameterize(chosen_mus, chosen_log_vars)
@@ -276,7 +284,11 @@ class RlVae:
             self.console_log(f"total loss: {total_loss}")
             self.console_log(f"average loss: {avg_loss}")
             if epoch % 10 == 0:
-                self.plot_latent(training_data_loader, f"images/{self.arch_name}-epoch-{epoch}-epsilon-{round(self.epsilon, 2)}-latent.png")
+                torch.save(torch.stack(mu_list), 'saved_mus.pt')
+                torch.save(torch.stack(logvar_list), 'saved_logvars.pt')
+                torch.save(torch.stack(weight_list), 'saved_weights.pt')
+                torch.save(torch.stack(index_list), 'saved_indices.pt')
+                self.plot_latent(training_data_loader, f"images/{self.arch_name}-epoch-{epoch}-latent.png")
 
     def save_model(self, path):
         """

@@ -82,6 +82,78 @@ def symmetric_kl_divergence_2d(mus, logvar):
     return torch.mean(average_distances)
 
 
+def compute_euclidian_distance(mus):
+    """
+    compute the euclidian distances between the means distributions
+    mus: tensor with shape [batch_size, heads, dimensions]
+    """
+    average_distances = torch.tensor([], dtype=torch.float32)
+    for b in range(mus.shape[0]):
+        cumulative_distance = 0.0
+        counter = 0
+        for i in range(mus.shape[1]):
+            for j in range(i + 1, mus.shape[1]):
+                mu1 = mus[b][i]
+                mu2 = mus[b][j]
+
+                distance = torch.sqrt(torch.square(mu1[0] - mu2[0]) + torch.square(mu1[1] - mu2[1]))
+                cumulative_distance += distance.item()  # Convert to Python float
+                counter += 1
+
+        current_average = cumulative_distance / counter
+        average_distances = torch.cat((average_distances, torch.tensor([current_average], dtype=torch.float32)))
+
+    return torch.mean(average_distances)
+
+
 def scale_to_01(x, x_min, x_max):
     return (x - x_min) / (x_max - x_min)
 
+
+if __name__ == "__main__":
+    input_mu = torch.Tensor([
+        [[0.0115, -0.0214],
+         [0.0194, 0.0226],
+         [0.0042, -0.0058],
+         [0.0083, 0.0015],
+         [0.0235, 0.0034]],
+
+        [[0.5, 0.5],
+         [0.5, 0.5],
+         [0.5, 0.5],
+         [0.5, 0.5],
+         [0.5, 0.5]],
+
+        [[0.5, 0.5],
+         [0.5, 0.5],
+         [0.5, 0.5],
+         [0.5, 0.5],
+         [0.5, 0.5]]
+    ])
+
+    input_logvar = torch.Tensor([
+        [[-0.0036, -0.0109],
+         [0.0209, 0.0153],
+         [0.0063, -0.0077],
+         [-0.0310, 0.0057],
+         [0.0183, 0.0011]],
+
+        [[0.5, 0.5],
+         [0.5, 0.5],
+         [0.5, 0.5],
+         [0.5, 0.5],
+         [0.5, 0.5]],
+
+        [[0.5, 0.5],
+         [0.5, 0.5],
+         [0.5, 0.5],
+         [0.5, 0.5],
+         [0.5, 0.5]]
+    ])
+    print(input_mu.shape)
+    test = compute_euclidian_distance(input_mu)
+
+    data = {t: np.random.rand(5, 2) for t in range(100)}
+    print(data)
+
+    print(test[0].shape)

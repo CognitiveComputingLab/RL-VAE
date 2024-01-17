@@ -14,7 +14,7 @@ class DecreasingExplorationRLVAE(rl_vae.RlVae):
         self.optimizer = torch.optim.Adam(list(self.encoder_agent.parameters()) + list(self.decoder_agent.parameters()))
 
         self.epsilon = 1
-        self.decay_rate = 0.999
+        self.decay_rate = 0.99
         self.min_epsilon = 0.001
         self.previous_epoch = float("-inf")
 

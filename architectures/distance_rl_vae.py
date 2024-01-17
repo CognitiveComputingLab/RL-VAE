@@ -15,8 +15,13 @@ class DistanceRLVAE(rl_vae.RlVae):
         self.decoder_agent = rl_vae.DecoderAgent(input_dim, latent_dimensions).to(device)
         self.optimizer = torch.optim.Adam(list(self.encoder_agent.parameters()) + list(self.decoder_agent.parameters()))
 
-        self.distance_reward_weight = 1
+        self.distance_reward_weight = 100
         self.max_distribution_distance = 1000
+
+        self.epsilon = 1
+        self.decay_rate = 0.9
+        self.min_epsilon = 0.001
+        self.previous_epoch = float("-inf")
 
     def extended_reward_function(self, x_a, x_b, mean, logvar, mean_weights, all_mus, all_logvar):
         """
@@ -35,6 +40,41 @@ class DistanceRLVAE(rl_vae.RlVae):
         scaled_distance = (scaled_distance * self.distance_reward_weight) - self.distance_reward_weight
         result += scaled_distance
         return result
+
+    def exploration_function(self, mus, logvar, weights, epoch):
+        """
+        explore less as time passes
+        """
+        # decrease exploration every new epoch
+        if self.previous_epoch < epoch:
+            self.epsilon = max(self.min_epsilon, self.epsilon * self.decay_rate)
+            self.previous_epoch = epoch
+
+        chosen_mus = []
+        chosen_log_vars = []
+        chosen_indices = []
+
+        for i in range(weights.shape[0]):
+            if random.random() < self.epsilon:
+                # Randomly select a mean
+                random_index = random.randint(0, weights.shape[1] - 1)
+                chosen_mu = mus[i, random_index]
+                chosen_log_var = logvar[i, random_index]
+                chosen_indices.append(random_index)
+            else:
+                # Use argmax to select a mean
+                argmax_index = torch.argmax(weights[i])
+                chosen_mu = mus[i, argmax_index]
+                chosen_log_var = logvar[i, argmax_index]
+                chosen_indices.append(argmax_index)
+
+            chosen_mus.append(chosen_mu)
+            chosen_log_vars.append(chosen_log_var)
+
+        chosen_mus = torch.stack(chosen_mus)
+        chosen_log_vars = torch.stack(chosen_log_vars)
+        chosen_indices = torch.tensor(chosen_indices).to(self.device)
+        return chosen_mus, chosen_log_vars, chosen_indices
 
     def train(self, training_data_loader, epochs=100):
         """
@@ -87,5 +127,5 @@ class DistanceRLVAE(rl_vae.RlVae):
             self.avg_loss_li.append(avg_loss)
             self.console_log(f"total loss: {total_loss}")
             self.console_log(f"average loss: {avg_loss}")
-            if epoch % 10 == 0:
+            if epoch % 5 == 0:
                 self.plot_latent(training_data_loader, f"images/{self.arch_name}-epoch-{epoch}-latent.png")

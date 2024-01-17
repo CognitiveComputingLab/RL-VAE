@@ -16,7 +16,7 @@ print("using device: ", device)
 
 if __name__ == "__main__":
     # generate data to be embedded
-    toy_data = data.MoebiusStrip(n=10000, width=1, turns=1).generate()
+    toy_data = data.MoebiusStrip(n=12800, width=1, turns=1).generate()
     # toy_data = data.Sphere3D(10000).generate().add_noise(0.2)
     # toy_data = data.MusicData(10000).generate()
     input_dim = toy_data.data.shape[1]
@@ -36,20 +36,20 @@ if __name__ == "__main__":
     # train RL-VAE system on data
     for i in [1]:
         # model = vae.VaeSystem(device, input_dim)
-        # model = rl_vae.RlVae(device, input_dim)
-        # model = de_rl_vae.DecreasingExplorationRLVAE(device, input_dim, 20)
+        # model = rl_vae.RlVae(device, input_dim, 1)
+        model = de_rl_vae.DecreasingExplorationRLVAE(device, input_dim, 3)
         # model = ce_rl_vae.ConstantExplorationRLVAE(device, input_dim)
-        model = distance_rl_vae.DistanceRLVAE(device, input_dim, 2)
+        # model = distance_rl_vae.DistanceRLVAE(device, input_dim, 5)
 
         model.success_weight = i
         toy_dataset = helper.ToyTorchDataset(toy_data)
         data_loader = torch.utils.data.DataLoader(
             toy_dataset,
-            batch_size=64,
+            batch_size=128,
             shuffle=False
         )
         try:
-            model.train(data_loader, epochs=100)
+            model.train(data_loader, epochs=1000)
         except KeyboardInterrupt:
             print("stopping early...")
         model.plot_latent(data_loader, f"images/{model.arch_name}-latent.png")

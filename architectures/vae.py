@@ -12,15 +12,17 @@ torch.manual_seed(0)
 class VariationalEncoder(nn.Module):
     def __init__(self, input_dim, latent_dims):
         super(VariationalEncoder, self).__init__()
-        self.linear1 = nn.Linear(input_dim, 512)
-        self.linear2 = nn.Linear(512, 1024)
-        self.linearM = nn.Linear(1024, latent_dims)
-        self.linearS = nn.Linear(1024, latent_dims)
+        self.linear1 = nn.Linear(input_dim, 1024)
+        self.linear2 = nn.Linear(1024, 2048)
+        self.linear3 = nn.Linear(2048, 4096)
+        self.linearM = nn.Linear(4096, latent_dims)
+        self.linearS = nn.Linear(4096, latent_dims)
 
     def forward(self, x):
         x = torch.flatten(x, start_dim=1)
         x = functional.relu(self.linear1(x))
         x = functional.relu(self.linear2(x))
+        x = functional.relu(self.linear3(x))
         # mean
         mu = self.linearM(x)
         # variance
@@ -31,14 +33,16 @@ class VariationalEncoder(nn.Module):
 class Decoder(nn.Module):
     def __init__(self, input_dim, latent_dims):
         super(Decoder, self).__init__()
-        self.linear1 = nn.Linear(latent_dims, 512)
-        self.linear2 = nn.Linear(512, 1024)
-        self.linear3 = nn.Linear(1024, input_dim)
+        self.linear1 = nn.Linear(latent_dims, 1024)
+        self.linear2 = nn.Linear(1024, 2048)
+        self.linear3 = nn.Linear(2048, 4096)
+        self.linearOut = nn.Linear(4096, input_dim)
 
     def forward(self, z):
         z = functional.relu(self.linear1(z))
         z = functional.relu(self.linear2(z))
-        z = self.linear3(z)
+        z = functional.relu(self.linear3(z))
+        z = self.linearOut(z)
         return z
 
 
@@ -59,10 +63,10 @@ def re_parameterize(mu, log_var):
 
 
 class VariationalAutoencoder(nn.Module):
-    def __init__(self, input_dim, latent_dims):
+    def __init__(self, device, input_dim, latent_dims):
         super(VariationalAutoencoder, self).__init__()
-        self.encoder = VariationalEncoder(input_dim, latent_dims)
-        self.decoder = Decoder(input_dim, latent_dims)
+        self.encoder = VariationalEncoder(input_dim, latent_dims).to(device)
+        self.decoder = Decoder(input_dim, latent_dims).to(device)
 
     def forward(self, x):
         # encode
@@ -81,9 +85,9 @@ class VaeSystem:
         self.device = device
         self.latent_dimensions = latent_dimensions
         self.input_dim = input_dim
-        self.autoencoder = VariationalAutoencoder(input_dim, self.latent_dimensions).to(device)
+        self.autoencoder = VariationalAutoencoder(device, input_dim, self.latent_dimensions).to(device)
         self.optimiser = torch.optim.Adam(self.autoencoder.parameters())
-        self.success_weight = 1
+        self.success_weight = 1000
 
         self.avg_loss_li = []
         self.total_loss_li = []
@@ -113,6 +117,7 @@ class VaeSystem:
         plt.gca().set_aspect('equal', 'datalim')
         plt.savefig(save_as)
         plt.close()
+        self.autoencoder.encoder.to(self.device)
 
     def train(self, data, epochs=100):
 
@@ -144,6 +149,9 @@ class VaeSystem:
             self.avg_loss_li.append(avg_loss)
             print(f"total loss: {total_loss}")
             print(f"average loss: {avg_loss}")
+
+            if epoch % 10 == 0:
+                self.plot_latent(data, f"images/{self.arch_name}-epoch-{epoch}-latent.png")
 
     def save_model(self, save_as):
         torch.save(self.autoencoder.state_dict(), save_as)
