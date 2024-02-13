@@ -195,13 +195,15 @@ class UMAP_VAE(rl_vae.RlVae):
 
             for ind in range(dataset.data.shape[0]):
                 # sample the second index
-                # pos_p, neg_p = self.sample_non_repeating_pairs(self.symmetric_probabilities[ind], ind, n_samples=20)
-                # samples = torch.concat([pos_p, neg_p])
+                sym_tensor = torch.from_numpy(self.symmetric_probabilities[ind]).to(self.device).float()
+                pos_p, neg_p = self.sample_non_repeating_pairs(sym_tensor, ind, n_samples=10)
+                samples = torch.concat([pos_p, neg_p])
 
-                for ind2 in range(dataset.data.shape[0]):
+                # for ind2 in range(dataset.data.shape[0]):
+                for ind2 in samples:
                     if ind2 == ind:
                         continue
-                    # ind2 = ind2.item()
+                    ind2 = ind2.item()
 
                     p1_tensor = torch.from_numpy(dataset.data[ind]).unsqueeze(0).to(self.device).float()
                     p2_tensor = torch.from_numpy(dataset.data[ind2]).unsqueeze(0).to(self.device).float()
