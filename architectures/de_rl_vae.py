@@ -1,5 +1,4 @@
 import random
-import numpy as np
 import torch
 import torch.nn.functional as functional
 import architectures.rl_vae as rl_vae

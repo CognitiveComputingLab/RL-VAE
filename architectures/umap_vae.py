@@ -52,6 +52,7 @@ class UMAP_VAE(rl_vae.RlVae):
         self.a = 0
         self.b = 0
         self.symmetric_probabilities = None
+        self.n_samples = self.k_neighbours
 
     @staticmethod
     def compute_n_neighbours(prob):
@@ -138,54 +139,68 @@ class UMAP_VAE(rl_vae.RlVae):
         self.a = p[0]
         self.b = p[1]
 
-    def plot_latent_test(self, dataset, epoch):
+    def plot_latent(self, dataset, save_as, num_batches=100):
+        """
+        plot the umap projection of the points according to the nn umap
+        """
         # Placeholder for collected points
         points = []
         colours = []
 
+        # iterate over all and place objects
         for i in range(dataset.data.shape[0]):
             p_tensor = torch.from_numpy(dataset.data[i]).unsqueeze(0).to(self.device).float()
             colours.append(dataset.colors[i])
             p = self.encoder_agent(p_tensor)
             point = p
             points.append(point.detach().to('cpu').numpy())
-
         points = np.concatenate(points, axis=0)
 
         # Plotting
         plt.scatter(points[:, 0], points[:, 1], c=colours, cmap='tab10')
-        plt.xlabel('Dimension 1')
-        plt.ylabel('Dimension 2')
-        plt.title('2D Points from Model')
-        # plt.show()
-        plt.savefig(f'images/plot-epoch-{epoch}.png')
+        plt.title('NN UMAP Projection')
+        plt.savefig(save_as)
         plt.close()
 
-    def sample_non_repeating_pairs(self, probabilities, excluded_index, n_samples=100):
+    def sample(self, sample_index):
+        """
+        sample n_samples negative and positive samples for UMAP
+        :param sample_index: the index of the point to sample neighbours for
+        :return positive_indices: indices of positive samples (selected with positive probability weighting)
+        :return negative_indices: indices of negative samples (selected with 1 - positive probability weighting)
+        """
+        # get probability tensor from numpy
+        probabilities = torch.from_numpy(self.symmetric_probabilities[sample_index]).to(self.device).float()
+
         # exclude the specified index
         adjusted_probabilities = probabilities.clone()
-        adjusted_probabilities[excluded_index] = 0
+        adjusted_probabilities[sample_index] = 0
 
         n_positive = torch.sum(adjusted_probabilities > 0).item()
         n_negative = torch.sum(adjusted_probabilities < 1).item() - 1
 
         # adjust n_samples based on available samples
-        n_samples_positive = min(n_samples, n_positive)
-        n_samples_negative = min(n_samples, n_negative)
+        n_samples_positive = min(self.n_samples, n_positive)
+        n_samples_negative = min(self.n_samples, n_negative)
 
         # sample positive
         positive_weights = adjusted_probabilities / adjusted_probabilities.sum()
         positive_indices = torch.multinomial(positive_weights, n_samples_positive, replacement=False)
 
         # sample negative
-        adjusted_probabilities[excluded_index] = 1
+        adjusted_probabilities[sample_index] = 1
         negative_weights = 1 - adjusted_probabilities
         negative_weights /= negative_weights.sum()
         negative_indices = torch.multinomial(negative_weights, n_samples_negative, replacement=False)
 
         return positive_indices, negative_indices
 
-    def test(self, dataset, epochs=10):
+    def train(self, dataset, epochs=10):
+        """
+        train the nn UMAP method on the given dataset
+        :param dataset: ToyTorchDataset object and NOT a dataloader
+        :param epochs: number of epochs to run for
+        """
         loss_history = []
         for epoch in range(epochs):
             epoch_loss = 0
@@ -195,11 +210,9 @@ class UMAP_VAE(rl_vae.RlVae):
 
             for ind in range(dataset.data.shape[0]):
                 # sample the second index
-                sym_tensor = torch.from_numpy(self.symmetric_probabilities[ind]).to(self.device).float()
-                pos_p, neg_p = self.sample_non_repeating_pairs(sym_tensor, ind, n_samples=10)
+                pos_p, neg_p = self.sample(ind)
                 samples = torch.concat([pos_p, neg_p])
 
-                # for ind2 in range(dataset.data.shape[0]):
                 for ind2 in samples:
                     if ind2 == ind:
                         continue
@@ -233,5 +246,5 @@ class UMAP_VAE(rl_vae.RlVae):
 
             avg_loss = epoch_loss / dataset.data.shape[0]
             loss_history.append(avg_loss)
-            print(f"Average Cross-Entropy = {avg_loss} after {epoch} epochs")
-            self.plot_latent_test(dataset, epoch)
+            self.console_log(f"Average Cross-Entropy = {avg_loss} after {epoch} epochs")
+            self.plot_latent(dataset, f'images/plot-epoch-{epoch}.png')
