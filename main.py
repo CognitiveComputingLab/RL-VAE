@@ -36,7 +36,8 @@ class Main:
         """
         get relevant data and format into correct object classes
         """
-        self.toy_data = data.MoebiusStrip(n=self.data_n, width=1, turns=1).generate()
+        # self.toy_data = data.MoebiusStrip(n=self.data_n, width=1, turns=1).generate()
+        self.toy_data = data.Sphere3D(n=self.data_n).generate()
         self.toy_dataset = helper.ToyTorchDataset(self.toy_data)
         self.data_loader = torch.utils.data.DataLoader(
             self.toy_dataset,
@@ -76,10 +77,10 @@ class Main:
         """
         run main model
         """
-        success_weights = [1, 50]
+        success_weights = [50]
         for i in success_weights:
-            model = vae.VaeSystem(self.device, self.input_dim)
-            # model = rl_vae.RlVae(device, input_dim, 1)
+            # model = vae.VaeSystem(self.device, self.input_dim)
+            model = rl_vae.RlVae(self.device, self.input_dim, 2)
             # model = de_rl_vae.DecreasingExplorationRLVAE(device, input_dim, 3)
             # model = ce_rl_vae.ConstantExplorationRLVAE(device, input_dim)
             # model = distance_rl_vae.DistanceRLVAE(device, input_dim, 5)
@@ -101,5 +102,7 @@ class Main:
 
 
 if __name__ == "__main__":
-    main_obj = Main()
+    main_obj = Main(data_n=1000)
     main_obj.show_nn_umap()
+    # main_obj.show_umap()
+    # main_obj.run_rl_vae()

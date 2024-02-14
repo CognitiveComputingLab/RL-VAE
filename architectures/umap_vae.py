@@ -208,7 +208,7 @@ class UMAP_VAE(rl_vae.RlVae):
             # Initialize gradient accumulation
             self.optimizer.zero_grad()
 
-            for ind in range(dataset.data.shape[0]):
+            for ind in tqdm(range(dataset.data.shape[0])):
                 # sample the second index
                 pos_p, neg_p = self.sample(ind)
                 samples = torch.concat([pos_p, neg_p])

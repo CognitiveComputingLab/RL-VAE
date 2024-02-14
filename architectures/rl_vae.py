@@ -107,7 +107,7 @@ class RlVae:
         self.input_dim = input_dim
 
         self.verbose = True
-        self.arch_name = "RL-Multi-VAE-50"
+        self.arch_name = f"RL-Multi-VAE-{num_heads}"
 
         self.success_weight = 1
 
@@ -284,10 +284,10 @@ class RlVae:
             self.console_log(f"total loss: {total_loss}")
             self.console_log(f"average loss: {avg_loss}")
             if epoch % 10 == 0:
-                torch.save(torch.stack(mu_list), 'saved_mus.pt')
-                torch.save(torch.stack(logvar_list), 'saved_logvars.pt')
-                torch.save(torch.stack(weight_list), 'saved_weights.pt')
-                torch.save(torch.stack(index_list), 'saved_indices.pt')
+                # torch.save(torch.stack(mu_list), 'saved_mus.pt')
+                # torch.save(torch.stack(logvar_list), 'saved_logvars.pt')
+                # torch.save(torch.stack(weight_list), 'saved_weights.pt')
+                # torch.save(torch.stack(index_list), 'saved_indices.pt')
                 self.plot_latent(training_data_loader, f"images/{self.arch_name}-epoch-{epoch}-latent.png")
 
     def save_model(self, path):
