@@ -37,7 +37,7 @@ class Main:
         get relevant data and format into correct object classes
         """
         # self.toy_data = data.MoebiusStrip(n=self.data_n, width=1, turns=6).generate()
-        # self.toy_data = data.Sphere3D(n=self.data_n).generate()
+        self.toy_data = data.Sphere3D(n=self.data_n).generate()
         self.toy_dataset = helper.ToyTorchDataset(self.toy_data)
         self.data_loader = torch.utils.data.DataLoader(
             self.toy_dataset,
@@ -104,5 +104,5 @@ class Main:
 if __name__ == "__main__":
     main_obj = Main(data_n=10000)
     # main_obj.show_nn_umap()
-    main_obj.show_umap()
+    # main_obj.show_umap()
     # main_obj.run_rl_vae()
