@@ -1,22 +1,18 @@
-import numpy as np
-from sklearn.metrics.pairwise import euclidean_distances
 
 
 class PropertyCalculator:
-    def __init__(self):
-        self.symmetric_probabilities = None
+    def __init__(self, device):
+        self.device = device
 
-
-
-    def compute_high_dim_distances(self, train_data_loader):
+    def calculate_high_dim_property(self, train_data_loader):
         """
-        compute the high dimensional distances between points
+        compute all properties required for comparing high dimensional points
         :param train_data_loader: pytorch dataloader
         """
-        # recover real dataset from data loader
-        dataset = train_data_loader.dataset
-        n = dataset.data.shape[0]
+        return
 
-        # compute high dimensional distances and save in square matrix
-        dist = np.square(euclidean_distances(dataset.data, dataset.data))
-        rho = [sorted(dist[i])[1] for i in range(dist.shape[0])]
+    def get_high_dim_property(self, ind, ind2):
+        return None
+
+    def get_low_dim_property(self, p1, p2):
+        return None
