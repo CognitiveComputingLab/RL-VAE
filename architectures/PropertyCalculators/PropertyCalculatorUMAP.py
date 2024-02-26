@@ -44,11 +44,23 @@ class PropertyCalculatorUMAP(PropertyCalculator):
         self.a = p[0]
         self.b = p[1]
 
-    def get_high_dim_property(self, ind, ind2):
-        high_prob = torch.tensor([self.symmetric_probabilities[ind][ind2]]).float().to(self.device)
+    def get_high_dim_property(self, ind1, ind2):
+        """
+        get the high dimensional property from saved values
+        in this case the symmetric probability of being neighbours between high dimensional points
+        :param ind1: index of first high dimensional point
+        :param ind2: index of second high dimensional point
+        """
+        high_prob = self.symmetric_probabilities[ind1][ind2]
         return high_prob
 
     def get_low_dim_property(self, p1, p2):
+        """
+        calculate low dimensional property
+        in this case probability of being neighbours between low dimensional points
+        :param p1: first point as pytorch Tensor
+        :param p2: second point as pytorch Tensor
+        """
         distance = torch.norm(p1 - p2, p=2, dim=1)
         out_prob = torch.pow(1 + self.a * distance.pow(2 * self.b), -1)
         return out_prob
