@@ -2,6 +2,7 @@ import torch
 from architectures.Encoders.StandardModels import EncoderAgentUMAP
 from architectures.PropertyCalculators.PropertyCalculatorUMAP import PropertyCalculatorUMAP
 from architectures.Samplers.SamplerUMAP import SamplerUMAP
+from architectures.Explorers.ExplorerIdentity import ExplorerIdentity
 from architectures.Encoders.StandardModels import EncoderAgent
 from architectures.PropertyCalculators.PropertyCalculator import PropertyCalculator
 from architectures.Samplers.Sampler import Sampler
@@ -18,6 +19,7 @@ class EmbeddingFramework:
         self.property_calculator = PropertyCalculatorUMAP(device)
         self.sampler = SamplerUMAP(device)
         self.encoder_agent = EncoderAgentUMAP(input_dim, output_dim).to(self.device)
+        self.explorer = ExplorerIdentity(device)
         self.optimizer = torch.optim.Adam(list(self.encoder_agent.parameters()))
 
     def train(self, training_data_loader, epochs=100):
@@ -40,6 +42,7 @@ class EmbeddingFramework:
         print("point shape: ", x.shape)
         x = x.to(self.device)
         out1 = self.encoder_agent(x)
+        out1 = self.explorer.get_point_from_output(out1)
 
         ind2 = self.sampler.next_complementary_indices(self.property_calculator)
         print("complementary index shape: ", ind2.shape)
@@ -48,6 +51,7 @@ class EmbeddingFramework:
         print("complementary point shape: ", x2.shape)
 
         out2 = self.encoder_agent(x2)
+        out2 = self.explorer.get_point_from_output(out2)
         print("out2 shape: ", out2.shape)
 
         low_dim_property = self.property_calculator.get_low_dim_property(out1, out2)
