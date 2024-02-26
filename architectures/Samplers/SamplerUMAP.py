@@ -1,23 +1,24 @@
 import torch
 from architectures.Samplers.Sampler import Sampler
+from architectures.Samplers.SamplerVAE import SamplerVAE
 
 
-class SamplerUMAP(Sampler):
-    def __init__(self, device):
-        super().__init__(device)
+class SamplerUMAP(Sampler, SamplerVAE):
+    def __init__(self, device, data_loader):
+        super().__init__(device, data_loader)
 
     def next_complementary_indices(self, property_calculator):
         """
         Get a single complementary index for each point in the current batch,
         randomly choosing between a positive and negative sample with equal probability.
-        :param property_calculator: An object containing `symmetric_probabilities` for the batch.
+        :param property_calculator: PropertyCalculator Object
         :return: A tensor of shape [batch_size, 1] where each entry is the index of the complementary point.
         """
         complementary_indices = []
 
         for sample_index in self._current_x_batch:
             # Get probability tensor from numpy
-            probabilities = property_calculator.symmetric_probabilities[sample_index]
+            probabilities = property_calculator.high_dim_property[sample_index]
 
             # Exclude the specified index
             adjusted_probabilities = probabilities.clone()

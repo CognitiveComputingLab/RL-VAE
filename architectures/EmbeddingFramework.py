@@ -1,38 +1,33 @@
 import torch
-from architectures.Encoders.StandardModels import EncoderAgentUMAP
 from architectures.PropertyCalculators.PropertyCalculatorUMAP import PropertyCalculatorUMAP
 from architectures.Samplers.SamplerUMAP import SamplerUMAP
 from architectures.Explorers.ExplorerIdentity import ExplorerIdentity
-from architectures.Encoders.StandardModels import EncoderAgent
+from architectures.Encoders.EncoderSimple import EncoderSimple
 from architectures.PropertyCalculators.PropertyCalculator import PropertyCalculator
 from architectures.Samplers.Sampler import Sampler
 
 
 class EmbeddingFramework:
-    def __init__(self, device, input_dim, output_dim):
+    def __init__(self, device, input_dim, output_dim, data_loader):
         # init general
         self.device = device
         self.input_dim = input_dim
         self.output_dim = output_dim
 
         # components
-        self.property_calculator = PropertyCalculatorUMAP(device)
-        self.sampler = SamplerUMAP(device)
-        self.encoder_agent = EncoderAgentUMAP(input_dim, output_dim).to(self.device)
+        self.property_calculator = PropertyCalculatorUMAP(device, data_loader)
+        self.sampler = SamplerUMAP(device, data_loader)
+        self.encoder_agent = EncoderSimple(input_dim, output_dim).to(self.device)
         self.explorer = ExplorerIdentity(device)
         self.optimizer = torch.optim.Adam(list(self.encoder_agent.parameters()))
 
-    def train(self, training_data_loader, epochs=100):
+    def train(self, epochs=100):
         """
         train the encoder to produce an embedding for the given dataset
-        :param training_data_loader: pytorch dataloader
         :param epochs: number of epochs to train for as int
         """
-        # pass the data loader to the sampler
-        self.sampler.data_loader = training_data_loader
-
         # distance calculation for high dimensional data
-        self.property_calculator.calculate_high_dim_property(training_data_loader)
+        self.property_calculator.calculate_high_dim_property()
 
         # testing
         self.sampler.reset_epoch()

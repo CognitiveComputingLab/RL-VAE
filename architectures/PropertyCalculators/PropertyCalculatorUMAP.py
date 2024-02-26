@@ -7,10 +7,10 @@ from architectures.PropertyCalculators.PropertyCalculator import PropertyCalcula
 
 
 class PropertyCalculatorUMAP(PropertyCalculator):
-    def __init__(self, device):
-        super().__init__(device)
+    def __init__(self, device, data_loader):
+        super().__init__(device, data_loader)
         # umap specific
-        self.symmetric_probabilities = None
+        self.__symmetric_probabilities = None
 
         # hyperparameters
         self.k_neighbours = 15
@@ -18,18 +18,21 @@ class PropertyCalculatorUMAP(PropertyCalculator):
         self.a = None
         self.b = None
 
+    @property
+    def high_dim_property(self):
+        return self.__symmetric_probabilities
+
     ###################################################
     # overwriting main property calculation functions #
     ###################################################
 
-    def calculate_high_dim_property(self, train_data_loader):
+    def calculate_high_dim_property(self):
         """
         compute all properties required for comparing high dimensional points
         in this case, compute symmetric pairwise probabilities
-        :param train_data_loader: pytorch dataloader
         """
         # recover real dataset from data loader
-        dataset = train_data_loader.dataset
+        dataset = self._data_loader.dataset
         n = dataset.data.shape[0]
 
         rho, dist = self.calculate_high_dim_distances(dataset)
@@ -37,7 +40,7 @@ class PropertyCalculatorUMAP(PropertyCalculator):
 
         # get symmetric from both directions
         sym_probabilities = self.symmetrize(prob)
-        self.symmetric_probabilities = torch.tensor(sym_probabilities).float()
+        self.__symmetric_probabilities = torch.tensor(sym_probabilities).float()
 
         # compute a and b parameters based on min distance
         x = np.linspace(0, 3, 300)
@@ -52,7 +55,7 @@ class PropertyCalculatorUMAP(PropertyCalculator):
         :param ind1: index of first high dimensional point
         :param ind2: index of second high dimensional point
         """
-        high_prob = self.symmetric_probabilities[ind1][ind2]
+        high_prob = self.__symmetric_probabilities[ind1][ind2]
         return high_prob
 
     def get_low_dim_property(self, p1, p2):
