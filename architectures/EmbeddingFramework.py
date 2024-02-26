@@ -1,8 +1,8 @@
 import torch
-from architectures.NeuralNetworks.StandardModels import EncoderAgentUMAP
+from architectures.Encoders.StandardModels import EncoderAgentUMAP
 from architectures.PropertyCalculators.PropertyCalculatorUMAP import PropertyCalculatorUMAP
 from architectures.Samplers.SamplerUMAP import SamplerUMAP
-from architectures.NeuralNetworks.StandardModels import EncoderAgent
+from architectures.Encoders.StandardModels import EncoderAgent
 from architectures.PropertyCalculators.PropertyCalculator import PropertyCalculator
 from architectures.Samplers.Sampler import Sampler
 
@@ -15,9 +15,9 @@ class EmbeddingFramework:
         self.output_dim = output_dim
 
         # components
-        self.property_calculator = PropertyCalculator(device)
-        self.sampler = Sampler(device)
-        self.encoder_agent = EncoderAgent(input_dim, output_dim).to(self.device)
+        self.property_calculator = PropertyCalculatorUMAP(device)
+        self.sampler = SamplerUMAP(device)
+        self.encoder_agent = EncoderAgentUMAP(input_dim, output_dim).to(self.device)
         self.optimizer = torch.optim.Adam(list(self.encoder_agent.parameters()))
 
     def train(self, training_data_loader, epochs=100):
@@ -42,7 +42,6 @@ class EmbeddingFramework:
         out1 = self.encoder_agent(x)
 
         ind2 = self.sampler.next_complementary_indices(self.property_calculator)
-        print("is complementary")
         print("complementary index shape: ", ind2.shape)
         x2, _ = self.sampler.get_points_from_indices(ind2)
         x2 = x2.to(self.device)
@@ -52,7 +51,10 @@ class EmbeddingFramework:
         print("out2 shape: ", out2.shape)
 
         low_dim_property = self.property_calculator.get_low_dim_property(out1, out2)
-        print("low dim property:", low_dim_property)
+        print("low dim property:", low_dim_property.shape)
+
+        high_prob = self.property_calculator.symmetric_probabilities[ind, ind2]
+        print("high prob: ", high_prob.shape)
 
         return
         for epoch in range(epochs):

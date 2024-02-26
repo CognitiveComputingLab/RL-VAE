@@ -36,7 +36,8 @@ class PropertyCalculatorUMAP(PropertyCalculator):
         prob = self.calculate_high_dim_probabilities(dist, rho, n)
 
         # get symmetric from both directions
-        self.symmetric_probabilities = self.symmetrize(prob)
+        sym_probabilities = self.symmetrize(prob)
+        self.symmetric_probabilities = torch.tensor(sym_probabilities).float()
 
         # compute a and b parameters based on min distance
         x = np.linspace(0, 3, 300)

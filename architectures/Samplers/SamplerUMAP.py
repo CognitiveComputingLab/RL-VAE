@@ -17,7 +17,7 @@ class SamplerUMAP(Sampler):
 
         for sample_index in self._current_x_batch:
             # Get probability tensor from numpy
-            probabilities = torch.from_numpy(property_calculator.symmetric_probabilities[sample_index]).float()
+            probabilities = property_calculator.symmetric_probabilities[sample_index]
 
             # Exclude the specified index
             adjusted_probabilities = probabilities.clone()
