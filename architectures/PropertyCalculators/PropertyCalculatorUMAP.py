@@ -3,7 +3,7 @@ import numpy as np
 from scipy import optimize
 from tqdm import tqdm
 from sklearn.metrics.pairwise import euclidean_distances
-from PropertyCalculator import PropertyCalculator
+from architectures.PropertyCalculators.PropertyCalculator import PropertyCalculator
 
 
 class PropertyCalculatorUMAP(PropertyCalculator):
@@ -14,6 +14,7 @@ class PropertyCalculatorUMAP(PropertyCalculator):
 
         # hyperparameters
         self.k_neighbours = 15
+        self.min_distance = 0.25
         self.a = None
         self.b = None
 
@@ -55,6 +56,15 @@ class PropertyCalculatorUMAP(PropertyCalculator):
     ##################################
     # UMAP specific helper functions #
     ##################################
+
+    def f(self, x):
+        y = []
+        for i in range(len(x)):
+            if x[i] <= self.min_distance:
+                y.append(1)
+            else:
+                y.append(np.exp(- x[i] + self.min_distance))
+        return y
 
     @staticmethod
     def compute_n_neighbours(prob):

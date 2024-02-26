@@ -12,7 +12,7 @@ class PropertyCalculator:
         return
 
     def get_high_dim_property(self, ind, ind2):
-        return None
+        return
 
     def get_low_dim_property(self, p1, p2):
-        return None
+        return

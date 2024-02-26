@@ -4,7 +4,7 @@ from toy_data import data
 from toy_data import plotting
 from toy_data import embedding
 
-from architectures import rl_vae, vae, ce_rl_vae, de_rl_vae, distance_rl_vae, umap_vae
+from architectures import rl_vae, vae, ce_rl_vae, de_rl_vae, distance_rl_vae, umap_vae, EmbeddingFramework
 import helper
 
 
@@ -102,7 +102,19 @@ class Main:
 
 
 if __name__ == "__main__":
-    main_obj = Main(data_n=10000)
+    # main_obj = Main(data_n=10000)
     # main_obj.show_nn_umap()
     # main_obj.show_umap()
     # main_obj.run_rl_vae()
+    device = get_device()
+
+    toy_data = data.Sphere3D(n=100).generate()
+    toy_dataset = helper.ToyTorchDataset(toy_data)
+    data_loader = torch.utils.data.DataLoader(
+        toy_dataset,
+        batch_size=100,
+        shuffle=False
+    )
+
+    embedding_framework = EmbeddingFramework.EmbeddingFramework(device, 3, 2)
+    embedding_framework.train(data_loader, 1)
