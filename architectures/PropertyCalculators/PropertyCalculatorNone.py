@@ -9,6 +9,9 @@ class PropertyCalculatorNone(PropertyCalculator):
     def high_dim_property(self):
         return
 
+    def symmetrize(self, prob):
+        return
+
     def calculate_high_dim_property(self):
         return
 

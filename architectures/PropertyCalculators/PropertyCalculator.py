@@ -12,6 +12,13 @@ class PropertyCalculator(ABC):
         return
 
     @abstractmethod
+    def symmetrize(self, prob):
+        """
+        symmetrize the high dimensional property
+        """
+        pass
+
+    @abstractmethod
     def calculate_high_dim_property(self):
         """
         compute all properties required for comparing high dimensional points

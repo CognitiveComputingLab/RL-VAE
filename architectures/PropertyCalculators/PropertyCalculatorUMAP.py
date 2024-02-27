@@ -18,13 +18,16 @@ class PropertyCalculatorUMAP(PropertyCalculator):
         self.__a = None
         self.__b = None
 
+    ###################################################
+    # overwriting main property calculation functions #
+    ###################################################
+
     @property
     def high_dim_property(self):
         return self.__symmetric_probabilities
 
-    ###################################################
-    # overwriting main property calculation functions #
-    ###################################################
+    def symmetrize(self, prob):
+        return prob + np.transpose(prob) - np.multiply(prob, np.transpose(prob))
 
     def calculate_high_dim_property(self):
         """
@@ -115,10 +118,6 @@ class PropertyCalculatorUMAP(PropertyCalculator):
         dist = np.square(euclidean_distances(dataset.data, dataset.data))
         rho = [sorted(dist[i])[1] for i in range(dist.shape[0])]
         return rho, dist
-
-    @staticmethod
-    def symmetrize(prob):
-        return prob + np.transpose(prob) - np.multiply(prob, np.transpose(prob))
 
     def calculate_high_dim_probabilities(self, dist, rho, n):
         prob = np.zeros((n, n))
