@@ -110,7 +110,7 @@ if __name__ == "__main__":
     # main_obj.run_rl_vae()
     device = get_device()
 
-    toy_data = data.Sphere3D(n=100).generate()
+    toy_data = data.Sphere3D(n=1000).generate()
     toy_dataset = helper.ToyTorchDataset(toy_data)
     data_loader = torch.utils.data.DataLoader(
         toy_dataset,
@@ -118,6 +118,6 @@ if __name__ == "__main__":
         shuffle=False
     )
 
-    embedding_framework = presets.preset_umap(device, 3, 2, data_loader)
-    embedding_framework.train(epochs=1)
+    embedding_framework = presets.preset_vae(device, 3, 2, data_loader)
+    embedding_framework.train(epochs=200)
     embedding_framework.plot_latent(f"images/latent.png")

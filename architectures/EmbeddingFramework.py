@@ -1,5 +1,6 @@
 import torch
 import matplotlib.pyplot as plt
+from tqdm import tqdm
 from torch.nn import Module
 from architectures.PropertyCalculators.PropertyCalculator import PropertyCalculator
 from architectures.Samplers.Sampler import Sampler
@@ -12,6 +13,7 @@ class EmbeddingFramework:
     def __init__(self, device):
         # init general
         self.__device = device
+        self.__disable_tqdm = False
 
         # components
         self.__property_calculator = None
@@ -27,13 +29,21 @@ class EmbeddingFramework:
         for name in component_names:
             self._create_property_for_component(name)
 
-        # additional
+        # non-class components
         self.__property_optimizer = None
         self.__reconstruction_optimizer = None
 
     #######################
     # getters and setters #
     #######################
+
+    @property
+    def disable_tqdm(self):
+        return self.__disable_tqdm
+
+    @disable_tqdm.setter
+    def disable_tqdm(self, value):
+        self.disable_tqdm = value
 
     def _create_property_for_component(self, name):
         """
@@ -101,10 +111,11 @@ class EmbeddingFramework:
     # training process #
     ####################
 
-    def train(self, epochs=100):
+    def train(self, epochs=100, plot_interval=50):
         """
         train the encoder to produce an embedding for the given dataset
         :param epochs: number of epochs to train for as int
+        :param plot_interval: each nth epoch to plot latent for
         """
         # before running, check if everything is set up correctly
         self.check_completeness()
@@ -112,13 +123,17 @@ class EmbeddingFramework:
         # distance calculation for high dimensional data
         self.property_calculator.calculate_high_dim_property()
 
-        for epoch in range(epochs):
+        for epoch in tqdm(range(epochs), disable=self.disable_tqdm):
             # tell the sampler that a new epoch is starting
             self.sampler.reset_epoch()
 
+            # run through epoch
             while not self.sampler.epoch_done:
                 self.run_iteration()
-                return
+
+            # plot latent space
+            if epoch % plot_interval == 0:
+                self.plot_latent(f"images/latent_{epoch}.png")
 
     def run_iteration(self):
         """
