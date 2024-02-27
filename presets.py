@@ -6,11 +6,13 @@ from architectures.Encoders.EncoderVAE import EncoderVAE
 from architectures.Explorers.ExplorerVAE import ExplorerVAE
 from architectures.Decoders.DecoderSimple import DecoderSimple
 from architectures.Transmitters.TransmitterIdentity import TransmitterIdentity
+from architectures.RewardCalculators.RewardCalculatorVAE import RewardCalculatorVAE
 
 from architectures.PropertyCalculators.PropertyCalculatorUMAP import PropertyCalculatorUMAP
 from architectures.Samplers.SamplerUMAP import SamplerUMAP
 from architectures.Encoders.EncoderSimple import EncoderSimple
 from architectures.Explorers.ExplorerIdentity import ExplorerIdentity
+from architectures.RewardCalculators.RewardCalculatorUMAP import RewardCalculatorUMAP
 
 
 def preset_umap(device, input_dim, output_dim, data_loader):
@@ -21,6 +23,7 @@ def preset_umap(device, input_dim, output_dim, data_loader):
     umap_embedding_framework.explorer = ExplorerIdentity(device)
     umap_embedding_framework.transmitter = TransmitterIdentity(device)
     umap_embedding_framework.decoder = DecoderSimple(input_dim, output_dim).to(device)
+    umap_embedding_framework.reward_calculator = RewardCalculatorUMAP(device)
     return umap_embedding_framework
 
 
@@ -32,4 +35,5 @@ def preset_vae(device, input_dim, output_dim, data_loader):
     vae_embedding_framework.explorer = ExplorerVAE(device)
     vae_embedding_framework.transmitter = TransmitterIdentity(device)
     vae_embedding_framework.decoder = DecoderSimple(input_dim, output_dim).to(device)
+    vae_embedding_framework.reward_calculator = RewardCalculatorVAE(device)
     return vae_embedding_framework

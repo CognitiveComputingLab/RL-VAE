@@ -12,6 +12,7 @@ class EmbeddingFramework:
         self.explorer = None
         self.transmitter = None
         self.decoder = None
+        self.reward_calculator = None
 
     def check_completeness(self):
         """
@@ -31,6 +32,8 @@ class EmbeddingFramework:
             raise ValueError("Transmitter Object has not been set.")
         if not self.decoder:
             raise ValueError("Decoder Object has not been set.")
+        if not self.reward_calculator:
+            raise ValueError("Reward Calculator has not been set.")
 
     def train(self, epochs=100):
         """
@@ -61,8 +64,8 @@ class EmbeddingFramework:
         x_a = x_a.to(self.device)
 
         # pass through encoder
-        z_a = self.encoder_agent(x_a)
-        z_a = self.explorer.get_point_from_output(z_a)
+        out = self.encoder_agent(x_a)
+        z_a = self.explorer.get_point_from_output(out)
 
         # get complementary indices corresponding to p1
         ind2 = self.sampler.next_complementary_indices(self.property_calculator)
@@ -75,13 +78,16 @@ class EmbeddingFramework:
             z_a2 = self.encoder_agent(x_a2)
             z_a2 = self.explorer.get_point_from_output(z_a2)
 
-            # calculate low dim property
+            # compare high and low dims
             low_dim_prop = self.property_calculator.get_low_dim_property(z_a, z_a2)
             high_dim_prop = self.property_calculator.high_dim_property[ind, ind2]
-            print(low_dim_prop.shape, high_dim_prop.shape)
+            property_loss = -self.reward_calculator.calculate_property_reward(high_dim_prop, low_dim_prop)
 
         # communicate through transmission channel
         z_b = self.transmitter.transmit(z_a)
 
         # pass through decoder
         x_b = self.decoder(z_b)
+
+        # compare original point and reconstructed point
+        reconstruction_loss = -self.reward_calculator.calculate_reconstruction_reward(x_a, x_b, out)
