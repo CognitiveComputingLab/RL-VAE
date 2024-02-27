@@ -1,8 +1,12 @@
+from architectures.EmbeddingFramework import EmbeddingFramework
+
 from architectures.PropertyCalculators.PropertyCalculatorNone import PropertyCalculatorNone
 from architectures.Samplers.SamplerVAE import SamplerVAE
 from architectures.Encoders.EncoderVAE import EncoderVAE
 from architectures.Explorers.ExplorerVAE import ExplorerVAE
-from architectures.EmbeddingFramework import EmbeddingFramework
+from architectures.Decoders.DecoderSimple import DecoderSimple
+from architectures.Transmitters.TransmitterIdentity import TransmitterIdentity
+
 from architectures.PropertyCalculators.PropertyCalculatorUMAP import PropertyCalculatorUMAP
 from architectures.Samplers.SamplerUMAP import SamplerUMAP
 from architectures.Encoders.EncoderSimple import EncoderSimple
@@ -15,6 +19,8 @@ def preset_umap(device, input_dim, output_dim, data_loader):
     umap_embedding_framework.sampler = SamplerUMAP(device, data_loader)
     umap_embedding_framework.encoder_agent = EncoderSimple(input_dim, output_dim).to(device)
     umap_embedding_framework.explorer = ExplorerIdentity(device)
+    umap_embedding_framework.transmitter = TransmitterIdentity(device)
+    umap_embedding_framework.decoder = DecoderSimple(input_dim, output_dim).to(device)
     return umap_embedding_framework
 
 
@@ -24,4 +30,6 @@ def preset_vae(device, input_dim, output_dim, data_loader):
     vae_embedding_framework.sampler = SamplerVAE(device, data_loader)
     vae_embedding_framework.encoder_agent = EncoderVAE(input_dim, output_dim).to(device)
     vae_embedding_framework.explorer = ExplorerVAE(device)
+    vae_embedding_framework.transmitter = TransmitterIdentity(device)
+    vae_embedding_framework.decoder = DecoderSimple(input_dim, output_dim).to(device)
     return vae_embedding_framework

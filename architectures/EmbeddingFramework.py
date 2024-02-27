@@ -11,6 +11,7 @@ class EmbeddingFramework:
         self.encoder_agent = None
         self.explorer = None
         self.transmitter = None
+        self.decoder = None
 
     def check_completeness(self):
         """
@@ -28,6 +29,8 @@ class EmbeddingFramework:
             raise ValueError("Explorer Object has not been set.")
         if not self.transmitter:
             raise ValueError("Transmitter Object has not been set.")
+        if not self.decoder:
+            raise ValueError("Decoder Object has not been set.")
 
     def train(self, epochs=100):
         """
@@ -81,4 +84,4 @@ class EmbeddingFramework:
         z_b = self.transmitter.transmit(z_a)
 
         # pass through decoder
-
+        x_b = self.decoder(z_b)
