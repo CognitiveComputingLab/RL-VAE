@@ -6,6 +6,7 @@ class PropertyCalculator(ABC):
         self._device = device
         self._data_loader = data_loader
 
+    @abstractmethod
     @property
     def high_dim_property(self):
         return

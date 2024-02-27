@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 
 class Sampler(ABC):
     def __init__(self, device, data_loader):
-        self.device = device
+        self._device = device
         self._data_loader = data_loader
         self._epoch_done = True
 

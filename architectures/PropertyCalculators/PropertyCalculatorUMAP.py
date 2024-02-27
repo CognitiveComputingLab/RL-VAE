@@ -15,8 +15,8 @@ class PropertyCalculatorUMAP(PropertyCalculator):
         # hyperparameters
         self.k_neighbours = 15
         self.min_distance = 0.25
-        self.a = None
-        self.b = None
+        self.__a = None
+        self.__b = None
 
     @property
     def high_dim_property(self):
@@ -45,8 +45,8 @@ class PropertyCalculatorUMAP(PropertyCalculator):
         # compute a and b parameters based on min distance
         x = np.linspace(0, 3, 300)
         p, _ = optimize.curve_fit(self.compute_low_dim_distance, x, self.f(x))
-        self.a = p[0]
-        self.b = p[1]
+        self.__a = p[0]
+        self.__b = p[1]
 
     def get_high_dim_property(self, ind1, ind2):
         """
@@ -66,7 +66,7 @@ class PropertyCalculatorUMAP(PropertyCalculator):
         :param p2: second point as pytorch Tensor
         """
         distance = torch.norm(p1 - p2, p=2, dim=1)
-        out_prob = torch.pow(1 + self.a * distance.pow(2 * self.b), -1)
+        out_prob = torch.pow(1 + self.__a * distance.pow(2 * self.__b), -1)
         return out_prob
 
     ##################################
