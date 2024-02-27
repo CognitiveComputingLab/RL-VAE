@@ -1,12 +1,3 @@
-import torch
-from architectures.PropertyCalculators.PropertyCalculatorUMAP import PropertyCalculatorUMAP
-from architectures.Samplers.SamplerUMAP import SamplerUMAP
-from architectures.Explorers.ExplorerIdentity import ExplorerIdentity
-from architectures.Encoders.EncoderSimple import EncoderSimple
-from architectures.PropertyCalculators.PropertyCalculator import PropertyCalculator
-from architectures.Samplers.Sampler import Sampler
-
-
 class EmbeddingFramework:
     def __init__(self, device, input_dim, output_dim, data_loader):
         # init general
@@ -15,16 +6,34 @@ class EmbeddingFramework:
         self.output_dim = output_dim
 
         # components
-        self.property_calculator = PropertyCalculatorUMAP(device, data_loader)
-        self.sampler = SamplerUMAP(device, data_loader)
-        self.encoder_agent = EncoderSimple(input_dim, output_dim).to(self.device)
-        self.explorer = ExplorerIdentity(device)
+        self.property_calculator = None
+        self.sampler = None
+        self.encoder_agent = None
+        self.explorer = None
+
+    def check_completeness(self):
+        """
+        check if all components are set
+        check if all components are compatible
+        raises an error if anything is wrong
+        """
+        if not self.property_calculator:
+            raise ValueError("PropertyCalculator Object has not been set.")
+        if not self.sampler:
+            raise ValueError("Sampler Object has not been set.")
+        if not self.encoder_agent:
+            raise ValueError("Encoder Object has not been set.")
+        if not self.explorer:
+            raise ValueError("Explorer Object has not been set.")
 
     def train(self, epochs=100):
         """
         train the encoder to produce an embedding for the given dataset
         :param epochs: number of epochs to train for as int
         """
+        # before running, check if everything is set up correctly
+        self.check_completeness()
+
         # distance calculation for high dimensional data
         self.property_calculator.calculate_high_dim_property()
 
