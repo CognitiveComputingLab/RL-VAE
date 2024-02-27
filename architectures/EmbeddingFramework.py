@@ -28,29 +28,6 @@ class EmbeddingFramework:
         # distance calculation for high dimensional data
         self.property_calculator.calculate_high_dim_property()
 
-        # testing
-        self.sampler.reset_epoch()
-        ind = self.sampler.next_batch_indices()
-
-        x, _ = self.sampler.get_points_from_indices(ind)
-
-        x = x.to(self.device)
-        out1 = self.encoder_agent(x)
-        out1 = self.explorer.get_point_from_output(out1)
-
-        ind2 = self.sampler.next_complementary_indices(self.property_calculator)
-        if ind2:
-            x2, _ = self.sampler.get_points_from_indices(ind2)
-            x2 = x2.to(self.device)
-
-            out2 = self.encoder_agent(x2)
-            out2 = self.explorer.get_point_from_output(out2)
-
-            low_dim_property = self.property_calculator.get_low_dim_property(out1, out2)
-
-            high_prob = self.property_calculator.high_dim_property[ind, ind2]
-
-        return
         for epoch in range(epochs):
             # tell the sampler that a new epoch is starting
             self.sampler.reset_epoch()
@@ -61,11 +38,23 @@ class EmbeddingFramework:
                 x, _ = self.sampler.get_points_from_indices(ind)
                 x = x.to(self.device)
 
-                # pass points through encoder
-                out = self.encoder_agent(x)
+                # pass through encoder
+                out1 = self.encoder_agent(x)
+                out1 = self.explorer.get_point_from_output(out1)
 
-                # get complementary sample for high/low dim comparison
-                ind2 = self.sampler.next_complementary_indices()
+                # get complementary indices corresponding to p1
+                ind2 = self.sampler.next_complementary_indices(self.property_calculator)
+                if ind2:
+                    # get points
+                    x2, _ = self.sampler.get_points_from_indices(ind2)
+                    x2 = x2.to(self.device)
 
+                    # pass through encoder
+                    out2 = self.encoder_agent(x2)
+                    out2 = self.explorer.get_point_from_output(out2)
 
+                    # calculate low dim property
+                    low_dim_property = self.property_calculator.get_low_dim_property(out1, out2)
+                    high_prob = self.property_calculator.high_dim_property[ind, ind2]
 
+                return
