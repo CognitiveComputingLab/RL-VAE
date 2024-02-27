@@ -16,7 +16,7 @@ from architectures.RewardCalculators.RewardCalculatorUMAP import RewardCalculato
 
 
 def preset_umap(device, input_dim, output_dim, data_loader):
-    umap_embedding_framework = EmbeddingFramework(device, input_dim, output_dim, data_loader)
+    umap_embedding_framework = EmbeddingFramework(device)
     umap_embedding_framework.property_calculator = PropertyCalculatorUMAP(device, data_loader)
     umap_embedding_framework.sampler = SamplerUMAP(device, data_loader)
     umap_embedding_framework.encoder_agent = EncoderSimple(input_dim, output_dim).to(device)
@@ -24,11 +24,12 @@ def preset_umap(device, input_dim, output_dim, data_loader):
     umap_embedding_framework.transmitter = TransmitterIdentity(device)
     umap_embedding_framework.decoder = DecoderSimple(input_dim, output_dim).to(device)
     umap_embedding_framework.reward_calculator = RewardCalculatorUMAP(device)
+    umap_embedding_framework.set_learning_mode(False)
     return umap_embedding_framework
 
 
 def preset_vae(device, input_dim, output_dim, data_loader):
-    vae_embedding_framework = EmbeddingFramework(device, input_dim, output_dim, data_loader)
+    vae_embedding_framework = EmbeddingFramework(device)
     vae_embedding_framework.property_calculator = PropertyCalculatorNone(device, data_loader)
     vae_embedding_framework.sampler = SamplerVAE(device, data_loader)
     vae_embedding_framework.encoder_agent = EncoderVAE(input_dim, output_dim).to(device)
@@ -36,4 +37,5 @@ def preset_vae(device, input_dim, output_dim, data_loader):
     vae_embedding_framework.transmitter = TransmitterIdentity(device)
     vae_embedding_framework.decoder = DecoderSimple(input_dim, output_dim).to(device)
     vae_embedding_framework.reward_calculator = RewardCalculatorVAE(device)
+    vae_embedding_framework.set_learning_mode(True)
     return vae_embedding_framework

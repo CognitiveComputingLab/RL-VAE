@@ -27,8 +27,8 @@ class EmbeddingFramework:
             self._create_property_for_component(name)
 
         # additional
-        self.__encoder_optimizer = None
-        self.__decoder_optimizer = None
+        self.__property_optimizer = None
+        self.__reconstruction_optimizer = None
 
     #######################
     # getters and setters #
@@ -36,7 +36,7 @@ class EmbeddingFramework:
 
     def _create_property_for_component(self, name):
         """
-        create getters and setters for all non-neural-network components
+        create getters and setters for all components
         """
         private_name = f"__{name}"
 
@@ -52,15 +52,26 @@ class EmbeddingFramework:
             if not isinstance(value, expected_type_dict[name]):
                 raise ValueError(f"Passed non {expected_type_dict[name].__name__} object as {name}.")
 
-            # create optimizers
-            if name == 'encoder_agent':
-                self.__encoder_optimizer = torch.optim.Adam(list(value.parameters()))
-            elif name == 'decoder_agent':
-                self.__decoder_optimizer = torch.optim.Adam(list(value.parameters()))
-
             setattr(instance, private_name, value)
 
         setattr(self.__class__, name, property(getter, setter))
+
+    def set_learning_mode(self, encoder_reconstruction):
+        """
+        define how the neural networks (encoder / decoder) should learn
+        :param encoder_reconstruction: boolean, should the encoder be trained on the reconstruction reward
+        """
+        if not self.__encoder_agent or not self.__decoder_agent:
+            raise ValueError("The Encoder and Decoder need to be set, before the learning mode is set.")
+
+        # set the optimizers
+        if encoder_reconstruction:
+            self.__reconstruction_optimizer = torch.optim.Adam(
+                list(self.__encoder_agent.parameters()) + list(self.__decoder_agent.parameters()))
+            self.__property_optimizer = torch.optim.Adam(list(self.__encoder_agent.parameters()))
+        else:
+            self.__reconstruction_optimizer = torch.optim.Adam(list(self.__decoder_agent.parameters()))
+            self.__property_optimizer = torch.optim.Adam(list(self.__encoder_agent.parameters()))
 
     def check_completeness(self):
         """
@@ -82,6 +93,8 @@ class EmbeddingFramework:
             raise ValueError("Decoder Object has not been set.")
         if not self.__reward_calculator:
             raise ValueError("Reward Calculator has not been set.")
+        if not self.__reconstruction_optimizer or not self.__property_optimizer:
+            raise ValueError("Learning mode has not been set.")
 
     ####################
     # training process #
@@ -110,10 +123,14 @@ class EmbeddingFramework:
         """
         run single iteration of training loop
         """
+        # reset optimizers
+        self.__property_optimizer.zero_grad()
+        self.__reconstruction_optimizer.zero_grad()
+
         # get batch of points
         ind = self.__sampler.next_batch_indices()
         x_a, _ = self.__sampler.get_points_from_indices(ind)
-        x_a = x_a.to(self.device)
+        x_a = x_a.to(self.__device)
 
         # pass through encoder
         out = self.__encoder_agent(x_a)
@@ -124,7 +141,7 @@ class EmbeddingFramework:
         if ind2 is not None:
             # get points
             x_a2, _ = self.__sampler.get_points_from_indices(ind2)
-            x_a2 = x_a2.to(self.device)
+            x_a2 = x_a2.to(self.__device)
 
             # pass through encoder
             z_a2 = self.__encoder_agent(x_a2)
@@ -134,6 +151,7 @@ class EmbeddingFramework:
             low_dim_prop = self.__property_calculator.get_low_dim_property(z_a, z_a2)
             high_dim_prop = self.__property_calculator.high_dim_property[ind, ind2]
             property_loss = -self.__reward_calculator.calculate_property_reward(high_dim_prop, low_dim_prop)
+            property_loss.backward()
 
         # communicate through transmission channel
         z_b = self.__transmitter.transmit(z_a)
@@ -143,3 +161,9 @@ class EmbeddingFramework:
 
         # compare original point and reconstructed point
         reconstruction_loss = -self.__reward_calculator.calculate_reconstruction_reward(x_a, x_b, out)
+        reconstruction_loss.backward()
+
+        # train the encoder and decoder
+        self.__property_optimizer.step()
+        self.__reconstruction_optimizer.step()
+
