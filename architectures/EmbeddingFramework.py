@@ -1,4 +1,5 @@
 import torch
+import matplotlib.pyplot as plt
 from torch.nn import Module
 from architectures.PropertyCalculators.PropertyCalculator import PropertyCalculator
 from architectures.Samplers.Sampler import Sampler
@@ -165,4 +166,42 @@ class EmbeddingFramework:
         total_loss.backward()
         self.__reconstruction_optimizer.step()
         self.__property_optimizer.step()
+
+    #################
+    # visualisation #
+    #################
+
+    def plot_latent(self, path):
+        """
+        draw every point in lower dimensional space
+        only 2D is supported
+        :param path: save visualisation to this directory
+        """
+        # init
+        self.sampler.reset_epoch()
+        self.explorer.evaluation_active = True
+
+        while not self.sampler.epoch_done:
+            # get batch of points
+            ind = self.sampler.next_batch_indices()
+            x, y = self.sampler.get_points_from_indices(ind)
+            x = x.to(self.__device)
+
+            # pass through encoder and get points
+            out = self.encoder_agent(x)
+            z = self.explorer.get_point_from_output(out)
+            z = z.detach().to('cpu').numpy()
+
+            # plot batch of points
+            colors = y[:, :3].to('cpu').detach().numpy()
+            plt.scatter(z[:, 0], z[:, 1], c=colors)
+
+        # generate image
+        plt.gca().set_aspect('equal', 'datalim')
+        plt.title(f'latent projection')
+        plt.savefig(path)
+        plt.close()
+
+        # un-init
+        self.explorer.evaluation_active = False
 

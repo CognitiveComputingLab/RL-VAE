@@ -1,3 +1,4 @@
+import os
 import torch
 
 from toy_data import data
@@ -117,5 +118,6 @@ if __name__ == "__main__":
         shuffle=False
     )
 
-    embedding_framework = presets.preset_vae(device, 3, 2, data_loader)
+    embedding_framework = presets.preset_umap(device, 3, 2, data_loader)
     embedding_framework.train(epochs=1)
+    embedding_framework.plot_latent(f"images/latent.png")
