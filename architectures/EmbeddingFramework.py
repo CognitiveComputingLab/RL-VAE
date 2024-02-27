@@ -19,7 +19,6 @@ class EmbeddingFramework:
         self.sampler = SamplerUMAP(device, data_loader)
         self.encoder_agent = EncoderSimple(input_dim, output_dim).to(self.device)
         self.explorer = ExplorerIdentity(device)
-        self.optimizer = torch.optim.Adam(list(self.encoder_agent.parameters()))
 
     def train(self, epochs=100):
         """
@@ -32,28 +31,24 @@ class EmbeddingFramework:
         # testing
         self.sampler.reset_epoch()
         ind = self.sampler.next_batch_indices()
-        print("index shape: ", ind.shape)
+
         x, _ = self.sampler.get_points_from_indices(ind)
-        print("point shape: ", x.shape)
+
         x = x.to(self.device)
         out1 = self.encoder_agent(x)
         out1 = self.explorer.get_point_from_output(out1)
 
         ind2 = self.sampler.next_complementary_indices(self.property_calculator)
-        print("complementary index shape: ", ind2.shape)
-        x2, _ = self.sampler.get_points_from_indices(ind2)
-        x2 = x2.to(self.device)
-        print("complementary point shape: ", x2.shape)
+        if ind2:
+            x2, _ = self.sampler.get_points_from_indices(ind2)
+            x2 = x2.to(self.device)
 
-        out2 = self.encoder_agent(x2)
-        out2 = self.explorer.get_point_from_output(out2)
-        print("out2 shape: ", out2.shape)
+            out2 = self.encoder_agent(x2)
+            out2 = self.explorer.get_point_from_output(out2)
 
-        low_dim_property = self.property_calculator.get_low_dim_property(out1, out2)
-        print("low dim property:", low_dim_property.shape)
+            low_dim_property = self.property_calculator.get_low_dim_property(out1, out2)
 
-        high_prob = self.property_calculator.symmetric_probabilities[ind, ind2]
-        print("high prob: ", high_prob.shape)
+            high_prob = self.property_calculator.high_dim_property[ind, ind2]
 
         return
         for epoch in range(epochs):

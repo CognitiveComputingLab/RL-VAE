@@ -11,17 +11,17 @@ class SamplerVAE(Sampler):
         get indices of next batch of points
         """
         # get indices tensor
-        indices = [x for x in range(self.__current_index, min(self.__current_index + self.__data_loader.batch_size,
-                                                              len(self.__data_loader.dataset)))]
+        indices = [x for x in range(self._current_index, min(self._current_index + self._data_loader.batch_size,
+                                                             len(self._data_loader.dataset)))]
         indices_tensor = torch.tensor([indices])
         self._current_x_batch = indices_tensor[0]
 
         # keep track of index
-        self.__current_index += self.__data_loader.batch_size
+        self._current_index += self._data_loader.batch_size
 
         # reset
-        if self.__current_index >= len(self.__data_loader.dataset):
-            self.__epoch_done = True
+        if self._current_index >= len(self._data_loader.dataset):
+            self._epoch_done = True
 
         return indices_tensor.squeeze(0)
 

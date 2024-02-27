@@ -1,9 +1,8 @@
 import torch
-from architectures.Samplers.Sampler import Sampler
 from architectures.Samplers.SamplerVAE import SamplerVAE
 
 
-class SamplerUMAP(Sampler, SamplerVAE):
+class SamplerUMAP(SamplerVAE):
     def __init__(self, device, data_loader):
         super().__init__(device, data_loader)
 

@@ -6,6 +6,7 @@ from toy_data import embedding
 
 from architectures import rl_vae, vae, ce_rl_vae, de_rl_vae, distance_rl_vae, umap_vae, EmbeddingFramework
 import helper
+import presets
 
 
 def get_device():
@@ -116,5 +117,5 @@ if __name__ == "__main__":
         shuffle=False
     )
 
-    embedding_framework = EmbeddingFramework.EmbeddingFramework(device, 3, 2)
-    embedding_framework.train(data_loader, 1)
+    embedding_framework = presets.preset_vae(device, 3, 2, data_loader)
+    embedding_framework.train(epochs=1)

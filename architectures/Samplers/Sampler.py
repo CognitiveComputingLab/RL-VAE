@@ -4,27 +4,27 @@ from abc import ABC, abstractmethod
 class Sampler(ABC):
     def __init__(self, device, data_loader):
         self.device = device
-        self.__data_loader = data_loader
-        self.__epoch_done = True
+        self._data_loader = data_loader
+        self._epoch_done = True
 
         # keep track
-        self.__current_index = 0
+        self._current_index = 0
         self._current_x_batch = []
 
     @property
     def epoch_done(self):
-        return self.__epoch_done
+        return self._epoch_done
 
     def reset_epoch(self):
-        self.__epoch_done = False
-        self.__current_index = 0
+        self._epoch_done = False
+        self._current_index = 0
         self._current_x_batch = []
 
     def get_points_from_indices(self, indices):
         """
         retrieves actual points from given index tensor
         """
-        points, colours = self.__data_loader.dataset[indices]
+        points, colours = self._data_loader.dataset[indices]
         points = points.squeeze(0)
         colours = colours.squeeze(0)
         return points, colours
