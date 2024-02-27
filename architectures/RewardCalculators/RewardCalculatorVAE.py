@@ -25,4 +25,4 @@ class RewardCalculatorVAE(RewardCalculator):
         loss = f.mse_loss(x_b, x_a, reduction='sum') * self.success_weight + kl_divergence * self.kl_weight
 
         # return computed loss
-        return loss
+        return -loss

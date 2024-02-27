@@ -123,10 +123,6 @@ class EmbeddingFramework:
         """
         run single iteration of training loop
         """
-        # reset optimizers
-        self.__property_optimizer.zero_grad()
-        self.__reconstruction_optimizer.zero_grad()
-
         # get batch of points
         ind = self.__sampler.next_batch_indices()
         x_a, _ = self.__sampler.get_points_from_indices(ind)
@@ -151,7 +147,11 @@ class EmbeddingFramework:
             low_dim_prop = self.__property_calculator.get_low_dim_property(z_a, z_a2)
             high_dim_prop = self.__property_calculator.high_dim_property[ind, ind2]
             property_loss = -self.__reward_calculator.calculate_property_reward(high_dim_prop, low_dim_prop)
+
+            # train encoder
+            self.__property_optimizer.zero_grad()
             property_loss.backward()
+            self.__property_optimizer.step()
 
         # communicate through transmission channel
         z_b = self.__transmitter.transmit(z_a)
@@ -161,9 +161,9 @@ class EmbeddingFramework:
 
         # compare original point and reconstructed point
         reconstruction_loss = -self.__reward_calculator.calculate_reconstruction_reward(x_a, x_b, out)
-        reconstruction_loss.backward()
 
         # train the encoder and decoder
-        self.__property_optimizer.step()
+        self.__reconstruction_optimizer.zero_grad()
+        reconstruction_loss.backward()
         self.__reconstruction_optimizer.step()
 
