@@ -118,12 +118,12 @@ if __name__ == "__main__":
     )
 
     embedding_framework = presets.preset_k_head_vae(device, 3, 2, data_loader, k=2)
-    embedding_framework.train(epochs=2)
+    embedding_framework.train(epochs=50, plot_interval=100)
     embedding_framework.plot_latent(f"images/latent.png")
 
     """
     TODO:
-    - implement k-head vae into framework
+    - implement k-head vae into framework (done)
     - implement variance exploration vae into framework
     - implement T-SNE
     - remove old files

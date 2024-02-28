@@ -36,13 +36,10 @@ class ExplorerKHeadVAE(Explorer):
 
     def exploration_function(self, epoch):
         """
-        regulate the exploration over time
+        constant exploration
         :param epoch: current training epoch
         """
-        # Decrease exploration every new epoch
-        if self.previous_epoch < epoch:
-            self.epsilon = max(self.min_epsilon, self.epsilon * self.decay_rate)
-            self.previous_epoch = epoch
+        return
 
     def get_point_from_output(self, out, epoch=None):
         """
@@ -81,3 +78,19 @@ class ExplorerKHeadVAE(Explorer):
         sample = self.chosen_mu + std * eps
 
         return sample
+
+
+class ExplorerKHeadVAEDecreasing(ExplorerKHeadVAE):
+    def __init__(self, device):
+        super().__init__(device)
+
+    def exploration_function(self, epoch):
+        """
+        decay amount of exploration over time
+        :param epoch: current training epoch
+        """
+        # Decrease exploration every new epoch
+        if self.previous_epoch < epoch:
+            self.epsilon = max(self.min_epsilon, self.epsilon * self.decay_rate)
+            self.previous_epoch = epoch
+
