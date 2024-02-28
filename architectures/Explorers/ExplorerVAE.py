@@ -14,7 +14,7 @@ class ExplorerVAE(Explorer):
     def evaluation_active(self, value):
         self._evaluation_active = value
 
-    def get_point_from_output(self, out, epoch):
+    def get_point_from_output(self, out, epoch=None):
         """
         get single point from encoder output
         in this case, sample from the output distribution via the re-parameterization trick

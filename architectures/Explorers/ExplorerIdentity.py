@@ -13,7 +13,7 @@ class ExplorerIdentity(Explorer):
     def evaluation_active(self, value):
         self._evaluation_active = value
 
-    def get_point_from_output(self, out, epoch):
+    def get_point_from_output(self, out, epoch=None):
         """
         get point from encoder output
         in this case there is no exploration or other transformation

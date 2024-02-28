@@ -20,7 +20,7 @@ class Explorer(ABC):
         pass
 
     @abstractmethod
-    def get_point_from_output(self, out, epoch):
+    def get_point_from_output(self, out, epoch=None):
         """
         get single point from neural network output
         :param out:  directly from neural network component (encoder)

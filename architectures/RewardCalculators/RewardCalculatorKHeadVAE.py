@@ -19,10 +19,12 @@ class RewardCalculatorKHeadVAE(RewardCalculator):
         includes KL divergence loss and success loss
         """
         mu, log_var, weight = out
+
+        # tensor for multiplying reward with probability
         mean_weights = weight.gather(1, explorer.chosen_indices.unsqueeze(1))
 
-        variance = torch.exp(log_var)
-        surprise = variance + torch.square(mu)
+        variance = torch.exp(explorer.chosen_log_var)
+        surprise = variance + torch.square(explorer.chosen_mu)
         success = f.mse_loss(x_a, x_b)
         loss = torch.sum((surprise + (success * self.success_weight)) * mean_weights)
         return -loss

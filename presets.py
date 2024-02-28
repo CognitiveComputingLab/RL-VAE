@@ -1,48 +1,58 @@
 from architectures.EmbeddingFramework import EmbeddingFramework
 
-import architectures.Encoders as Encoders
-import architectures.Decoders as Decoders
-import architectures.Explorers as Explorers
-import architectures.PropertyCalculators as PropertyCalculators
-import architectures.RewardCalculators as RewardCalculators
-import architectures.Samplers as Samplers
-import architectures.Transmitters as Transmitters
+from architectures.PropertyCalculators.PropertyCalculatorUMAP import PropertyCalculatorUMAP
+from architectures.Samplers.SamplerUMAP import SamplerUMAP
+from architectures.Encoders.EncoderSimple import EncoderSimple
+from architectures.Explorers.ExplorerIdentity import ExplorerIdentity
+from architectures.Transmitters.TransmitterIdentity import TransmitterIdentity
+from architectures.Decoders.DecoderSimple import DecoderSimple
+from architectures.RewardCalculators.RewardCalculatorUMAP import RewardCalculatorUMAP
+
+from architectures.PropertyCalculators.PropertyCalculatorNone import PropertyCalculatorNone
+from architectures.Samplers.SamplerVAE import SamplerVAE
+from architectures.Encoders.EncoderVAE import EncoderVAE
+from architectures.Explorers.ExplorerVAE import ExplorerVAE
+from architectures.RewardCalculators.RewardCalculatorVAE import RewardCalculatorVAE
+
+from architectures.Encoders.EncoderKHeadVAE import EncoderKHeadVAE
+from architectures.Explorers.ExplorerKHeadVAE import ExplorerKHeadVAE
+from architectures.RewardCalculators.RewardCalculatorKHeadVAE import RewardCalculatorKHeadVAE
 
 
 def preset_umap(device, input_dim, output_dim, data_loader):
     ef = EmbeddingFramework(device)
-    ef.property_calculator = PropertyCalculators.PropertyCalculatorUMAP.PropertyCalculatorUMAP(device, data_loader)
-    ef.sampler = Samplers.SamplerUMAP.SamplerUMAP(device, data_loader)
-    ef.encoder_agent = Encoders.EncoderSimple.EncoderSimple(input_dim, output_dim).to(device)
-    ef.explorer = Explorers.ExplorerIdentity.ExplorerIdentity(device)
-    ef.transmitter = Transmitters.TransmitterIdentity.TransmitterIdentity(device)
-    ef.decoder_agent = Decoders.DecoderSimple.DecoderSimple(input_dim, output_dim).to(device)
-    ef.reward_calculator = RewardCalculators.RewardCalculatorUMAP.RewardCalculatorUMAP(device)
+    ef.property_calculator = PropertyCalculatorUMAP(device, data_loader)
+    ef.sampler = SamplerUMAP(device, data_loader)
+    ef.encoder_agent = EncoderSimple(input_dim, output_dim).to(device)
+    ef.explorer = ExplorerIdentity(device)
+    ef.transmitter = TransmitterIdentity(device)
+    ef.decoder_agent = DecoderSimple(input_dim, output_dim).to(device)
+    ef.reward_calculator = RewardCalculatorUMAP(device)
     ef.set_learning_mode(encoder_reconstruction=False)
     return ef
 
 
 def preset_vae(device, input_dim, output_dim, data_loader):
     ef = EmbeddingFramework(device)
-    ef.property_calculator = PropertyCalculators.PropertyCalculatorNone.PropertyCalculatorNone(device, data_loader)
-    ef.sampler = Samplers.SamplerVAE.SamplerVAE(device, data_loader)
-    ef.encoder_agent = Encoders.EncoderVAE.EncoderVAE(input_dim, output_dim).to(device)
-    ef.explorer = Explorers.ExplorerVAE.ExplorerVAE(device)
-    ef.transmitter = Transmitters.TransmitterIdentity.TransmitterIdentity(device)
-    ef.decoder_agent = Decoders.DecoderSimple.DecoderSimple(input_dim, output_dim).to(device)
-    ef.reward_calculator = RewardCalculators.RewardCalculatorVAE.RewardCalculatorVAE(device)
+    ef.property_calculator = PropertyCalculatorNone(device, data_loader)
+    ef.sampler = SamplerVAE(device, data_loader)
+    ef.encoder_agent = EncoderVAE(input_dim, output_dim).to(device)
+    ef.explorer = ExplorerVAE(device)
+    ef.transmitter = TransmitterIdentity(device)
+    ef.decoder_agent = DecoderSimple(input_dim, output_dim).to(device)
+    ef.reward_calculator = RewardCalculatorVAE(device)
     ef.set_learning_mode(encoder_reconstruction=True)
     return ef
 
 
-def preset_k_head_vae(device, input_dim, output_dim, data_loader, k=2):
+def preset_k_head_vae(device, input_dim, output_dim, data_loader, k=3):
     ef = EmbeddingFramework(device)
-    ef.sampler = Samplers.SamplerVAE.SamplerVAE(device, data_loader)
-    ef.encoder_agent = Encoders.EncoderKHeadVAE.EncoderKHeadVAE(input_dim, output_dim, k)
-    ef.explorer = Explorers.ExplorerKHeadVAE.ExplorerKHeadVAE(device)
-    ef.property_calculator = PropertyCalculators.PropertyCalculatorNone.PropertyCalculatorNone(device, data_loader)
-    ef.transmitter = Transmitters.TransmitterIdentity.TransmitterIdentity(device)
-    ef.decoder_agent = Decoders.DecoderSimple.DecoderSimple(input_dim, output_dim)
-    ef.reward_calculator = RewardCalculators.RewardCalculatorKHeadVAE.RewardCalculatorKHeadVAE(device)
+    ef.sampler = SamplerVAE(device, data_loader)
+    ef.encoder_agent = EncoderKHeadVAE(input_dim, output_dim, k).to(device)
+    ef.explorer = ExplorerKHeadVAE(device)
+    ef.property_calculator = PropertyCalculatorNone(device, data_loader)
+    ef.transmitter = TransmitterIdentity(device)
+    ef.decoder_agent = DecoderSimple(input_dim, output_dim).to(device)
+    ef.reward_calculator = RewardCalculatorKHeadVAE(device)
     ef.set_learning_mode(encoder_reconstruction=True)
     return ef

@@ -13,10 +13,13 @@ class ExplorerKHeadVAE(Explorer):
 
         # exploration tracking
         self.epsilon = self.epsilon_start
+        self.epsilon_save = self.epsilon_start
         self.previous_epoch = 0
 
         # information transfer
         self.chosen_indices = None
+        self.chosen_mu = None
+        self.chosen_log_var = None
 
     @property
     def evaluation_active(self):
@@ -24,6 +27,11 @@ class ExplorerKHeadVAE(Explorer):
 
     @evaluation_active.setter
     def evaluation_active(self, value):
+        if value:
+            self.epsilon_save = self.epsilon
+            self.epsilon = 0
+        else:
+            self.epsilon = self.epsilon_save
         self._evaluation_active = value
 
     def exploration_function(self, epoch):
@@ -36,14 +44,15 @@ class ExplorerKHeadVAE(Explorer):
             self.epsilon = max(self.min_epsilon, self.epsilon * self.decay_rate)
             self.previous_epoch = epoch
 
-    def get_point_from_output(self, out, epoch):
+    def get_point_from_output(self, out, epoch=None):
         """
         get point from encoder output
         choose specific head based on weighted probabilities
         then pass mean and variance through re-parameterization to produce single point
         """
         # init
-        self.exploration_function(epoch)
+        if epoch:
+            self.exploration_function(epoch)
         mu, log_var, weight = out
 
         batch_size, num_choices = weight.shape
@@ -59,15 +68,16 @@ class ExplorerKHeadVAE(Explorer):
         self.chosen_indices = torch.where(random_selection_mask, random_indices, argmax_indices)
 
         # get chosen mu / log_var for each point in batch
-        chosen_mu = torch.gather(mu, 1, self.chosen_indices.unsqueeze(1)).squeeze(1)
-        chosen_log_var = torch.gather(log_var, 1, self.chosen_indices.unsqueeze(1)).squeeze(1)
+        expanded_indices = self.chosen_indices.view(batch_size, 1, 1).expand(-1, -1, mu.shape[2])
+        self.chosen_mu = torch.gather(mu, 1, expanded_indices).squeeze(1)
+        self.chosen_log_var = torch.gather(log_var, 1, expanded_indices).squeeze(1)
 
         # re-parameterize
         # compute the standard deviation
-        std = torch.exp(chosen_log_var / 2)
+        std = torch.exp(self.chosen_log_var / 2)
         # compute the normal distribution with the same standard deviation
         eps = torch.randn_like(std)
         # generate a sample
-        sample = chosen_mu + std * eps
+        sample = self.chosen_mu + std * eps
 
         return sample
