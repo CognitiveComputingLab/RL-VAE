@@ -15,8 +15,10 @@ from architectures.Explorers.ExplorerVAE import ExplorerVAE
 from architectures.RewardCalculators.RewardCalculatorVAE import RewardCalculatorVAE
 
 from architectures.Encoders.EncoderKHeadVAE import EncoderKHeadVAE
-from architectures.Explorers.ExplorerKHeadVAE import ExplorerKHeadVAE
+from architectures.Explorers.ExplorerKHeadVAE import ExplorerKHeadVAE, ExplorerKHeadVAEDecreasing
 from architectures.RewardCalculators.RewardCalculatorKHeadVAE import RewardCalculatorKHeadVAE
+
+from architectures.Explorers.ExplorerVariance import ExplorerVarianceDecreasing
 
 
 def preset_umap(device, input_dim, output_dim, data_loader):
@@ -45,14 +47,27 @@ def preset_vae(device, input_dim, output_dim, data_loader):
     return ef
 
 
-def preset_k_head_vae(device, input_dim, output_dim, data_loader, k=3):
+def preset_k_head_vae(device, input_dim, output_dim, data_loader, k=2):
     ef = EmbeddingFramework(device)
     ef.sampler = SamplerVAE(device, data_loader)
     ef.encoder_agent = EncoderKHeadVAE(input_dim, output_dim, k).to(device)
-    ef.explorer = ExplorerKHeadVAE(device)
+    ef.explorer = ExplorerKHeadVAEDecreasing(device)
     ef.property_calculator = PropertyCalculatorNone(device, data_loader)
     ef.transmitter = TransmitterIdentity(device)
     ef.decoder_agent = DecoderSimple(input_dim, output_dim).to(device)
     ef.reward_calculator = RewardCalculatorKHeadVAE(device)
+    ef.set_learning_mode(encoder_reconstruction=True)
+    return ef
+
+
+def preset_variance_vae(device, input_dim, output_dim, data_loader):
+    ef = EmbeddingFramework(device)
+    ef.property_calculator = PropertyCalculatorNone(device, data_loader)
+    ef.sampler = SamplerVAE(device, data_loader)
+    ef.encoder_agent = EncoderSimple(input_dim, output_dim).to(device)
+    ef.explorer = ExplorerVarianceDecreasing(device)
+    ef.transmitter = TransmitterIdentity(device)
+    ef.decoder_agent = DecoderSimple(input_dim, output_dim).to(device)
+    ef.reward_calculator = RewardCalculatorUMAP(device)
     ef.set_learning_mode(encoder_reconstruction=True)
     return ef

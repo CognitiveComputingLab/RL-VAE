@@ -113,11 +113,11 @@ if __name__ == "__main__":
     toy_dataset = helper.ToyTorchDataset(toy_data)
     data_loader = torch.utils.data.DataLoader(
         toy_dataset,
-        batch_size=100,
+        batch_size=5,
         shuffle=False
     )
 
-    embedding_framework = presets.preset_k_head_vae(device, 3, 2, data_loader, k=2)
+    embedding_framework = presets.preset_variance_vae(device, 3, 2, data_loader)
     embedding_framework.train(epochs=50, plot_interval=100)
     embedding_framework.plot_latent(f"images/latent.png")
 
@@ -127,6 +127,7 @@ if __name__ == "__main__":
     - implement variance exploration vae into framework
     - implement T-SNE
     - remove old files
+    - compatibility check?
     - add some extensions for visualisation??
     - support more data input??
     - make software package??
