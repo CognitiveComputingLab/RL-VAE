@@ -129,15 +129,16 @@ class EmbeddingFramework:
 
             # run through epoch
             while not self.sampler.epoch_done:
-                self.run_iteration()
+                self.run_iteration(epoch)
 
             # plot latent space
             if epoch % plot_interval == 0:
                 self.plot_latent(f"images/latent_{epoch}.png")
 
-    def run_iteration(self):
+    def run_iteration(self, epoch):
         """
         run single iteration of training loop
+        :param epoch: current training epoch
         """
         # get batch of points
         ind = self.sampler.next_batch_indices()
@@ -146,7 +147,7 @@ class EmbeddingFramework:
 
         # pass through encoder
         out = self.encoder_agent(x_a)
-        z_a = self.explorer.get_point_from_output(out)
+        z_a = self.explorer.get_point_from_output(out, epoch)
 
         # get complementary indices corresponding to p1
         ind2 = self.sampler.next_complementary_indices(self.property_calculator)
@@ -172,7 +173,7 @@ class EmbeddingFramework:
         x_b = self.decoder_agent(z_b)
 
         # compare original point and reconstructed point
-        reconstruction_loss = -self.reward_calculator.calculate_reconstruction_reward(x_a, x_b, out)
+        reconstruction_loss = -self.reward_calculator.calculate_reconstruction_reward(x_a, x_b, out, self.explorer)
 
         # train the encoder and decoder
         total_loss = reconstruction_loss + property_loss

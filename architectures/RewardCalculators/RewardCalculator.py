@@ -16,12 +16,13 @@ class RewardCalculator(ABC):
         pass
 
     @abstractmethod
-    def calculate_reconstruction_reward(self, x_a, x_b, out):
+    def calculate_reconstruction_reward(self, x_a, x_b, out, explorer):
         """
         calculate the reward for reconstructing the point after full embedding process
         :param x_a: the original datapoint batch
         :param x_b: the reconstructed datapoint batch
         :param out: the output of the encoder network
+        :param explorer: the embedding Explorer object for information from compute steps
         :return: pytorch loss with grad
         """
         pass

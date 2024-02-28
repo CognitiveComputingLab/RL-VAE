@@ -12,8 +12,7 @@ import presets
 
 def get_device():
     torch.manual_seed(0)
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    return device
+    return 'cuda' if torch.cuda.is_available() else 'cpu'
 
 
 class Main:
@@ -118,6 +117,17 @@ if __name__ == "__main__":
         shuffle=False
     )
 
-    embedding_framework = presets.preset_vae(device, 3, 2, data_loader)
-    embedding_framework.train(epochs=200)
+    embedding_framework = presets.preset_umap(device, 3, 2, data_loader)
+    embedding_framework.train(epochs=1)
     embedding_framework.plot_latent(f"images/latent.png")
+
+    """
+    TODO:
+    - implement k-head vae into framework
+    - implement variance exploration vae into framework
+    - implement T-SNE
+    - remove old files
+    - add some extensions for visualisation??
+    - support more data input??
+    - make software package??
+    """

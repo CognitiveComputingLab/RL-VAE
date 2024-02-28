@@ -13,7 +13,7 @@ class RewardCalculatorUMAP(RewardCalculator):
         loss = f.binary_cross_entropy(low_dim_prop, high_dim_prop)
         return -loss
 
-    def calculate_reconstruction_reward(self, x_a, x_b, out):
+    def calculate_reconstruction_reward(self, x_a, x_b, out, explorer):
         """
         calculate rewards based on difference between original point and reconstructed point
         """
