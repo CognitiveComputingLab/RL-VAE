@@ -52,7 +52,7 @@ class EncoderUMAP(EncoderSimple):
         pass point through general model
         :param sample_out: output of umap sampling, includes indices etc.
         """
-        # get x from sample_out
+        # get regular points from sample_out
         p1, _, _, _ = sample_out
 
         mu1 = super().forward(p1)

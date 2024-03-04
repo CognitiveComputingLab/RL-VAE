@@ -123,12 +123,14 @@ class EmbeddingFramework:
         # distance calculation for high dimensional data
         self.property_calculator.calculate_high_dim_property()
 
+        print("running for: ", epochs)
         for epoch in tqdm(range(epochs), disable=self.disable_tqdm):
             # tell the sampler that a new epoch is starting
             self.sampler.reset_epoch()
 
             # run through epoch
             while not self.sampler.epoch_done:
+                print("running iteration")
                 self.run_iteration(epoch)
                 return
 
@@ -147,6 +149,7 @@ class EmbeddingFramework:
 
         # pass through encoder
         encoder_out = self.encoder_agent(sample_out)
+        print("encoder out: ", encoder_out)
 
         return
         z_a = self.explorer.get_point_from_output(out, epoch)

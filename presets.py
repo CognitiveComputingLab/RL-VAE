@@ -2,7 +2,8 @@ from architectures.EmbeddingFramework import EmbeddingFramework
 
 from architectures.PropertyCalculators.PropertyCalculatorUMAP import PropertyCalculatorUMAP
 from architectures.samplers import SamplerUMAP
-from architectures.Encoders.EncoderSimple import EncoderSimple
+from architectures.encoders import EncoderUMAP
+from architectures.encoders import EncoderSimple
 from architectures.Explorers.ExplorerIdentity import ExplorerIdentity
 from architectures.transmitters import TransmitterIdentity
 from architectures.Decoders.DecoderSimple import DecoderSimple
@@ -10,11 +11,11 @@ from architectures.RewardCalculators.RewardCalculatorUMAP import RewardCalculato
 
 from architectures.PropertyCalculators.PropertyCalculatorNone import PropertyCalculatorNone
 from architectures.samplers import SamplerVAE
-from architectures.Encoders.EncoderVAE import EncoderVAE
+from architectures.encoders import EncoderVAE
 from architectures.Explorers.ExplorerVAE import ExplorerVAE
 from architectures.RewardCalculators.RewardCalculatorVAE import RewardCalculatorVAE
 
-from architectures.Encoders.EncoderKHeadVAE import EncoderKHeadVAE
+from architectures.encoders import EncoderKHeadVAE
 from architectures.Explorers.ExplorerKHeadVAE import ExplorerKHeadVAE, ExplorerKHeadVAEDecreasing
 from architectures.RewardCalculators.RewardCalculatorKHeadVAE import RewardCalculatorKHeadVAE
 
@@ -25,7 +26,7 @@ def preset_umap(device, input_dim, output_dim, data_loader):
     ef = EmbeddingFramework(device)
     ef.property_calculator = PropertyCalculatorUMAP(device, data_loader)
     ef.sampler = SamplerUMAP(device, data_loader)
-    ef.encoder_agent = EncoderSimple(input_dim, output_dim).to(device)
+    ef.encoder_agent = EncoderUMAP(input_dim, output_dim).to(device)
     ef.explorer = ExplorerIdentity(device)
     ef.transmitter = TransmitterIdentity(device)
     ef.decoder_agent = DecoderSimple(input_dim, output_dim).to(device)

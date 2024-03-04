@@ -20,8 +20,8 @@ if __name__ == "__main__":
         shuffle=False
     )
 
-    embedding_framework = presets.preset_variance_vae(device, 3, 2, data_loader)
-    embedding_framework.disable_tqdm = True
+    embedding_framework = presets.preset_umap(device, 3, 2, data_loader)
+    # embedding_framework.disable_tqdm = True
     embedding_framework.train(epochs=5, plot_interval=100)
     # embedding_framework.plot_latent(f"images/latent.png")
 
