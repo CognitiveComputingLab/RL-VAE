@@ -4,7 +4,7 @@ from architectures.PropertyCalculators.PropertyCalculatorUMAP import PropertyCal
 from architectures.Samplers.SamplerUMAP import SamplerUMAP
 from architectures.Encoders.EncoderSimple import EncoderSimple
 from architectures.Explorers.ExplorerIdentity import ExplorerIdentity
-from architectures.Transmitters.TransmitterIdentity import TransmitterIdentity
+from architectures.transmitters import TransmitterIdentity
 from architectures.Decoders.DecoderSimple import DecoderSimple
 from architectures.RewardCalculators.RewardCalculatorUMAP import RewardCalculatorUMAP
 

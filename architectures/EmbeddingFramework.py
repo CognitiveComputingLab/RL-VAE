@@ -5,7 +5,7 @@ from torch.nn import Module
 from architectures.PropertyCalculators.PropertyCalculator import PropertyCalculator
 from architectures.Samplers.Sampler import Sampler
 from architectures.Explorers.Explorer import Explorer
-from architectures.Transmitters.Transmitter import Transmitter
+from architectures.transmitters import Transmitter
 from architectures.RewardCalculators.RewardCalculator import RewardCalculator
 
 
@@ -167,7 +167,7 @@ class EmbeddingFramework:
             property_loss = -self.reward_calculator.calculate_property_reward(high_dim_prop, low_dim_prop)
 
         # communicate through transmission channel
-        z_b = self.transmitter.transmit(z_a)
+        z_b = self.transmitter(z_a)
 
         # pass through decoder
         x_b = self.decoder_agent(z_b)
