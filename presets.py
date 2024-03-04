@@ -1,7 +1,7 @@
 from architectures.EmbeddingFramework import EmbeddingFramework
 
 from architectures.PropertyCalculators.PropertyCalculatorUMAP import PropertyCalculatorUMAP
-from architectures.Samplers.SamplerUMAP import SamplerUMAP
+from architectures.samplers import SamplerUMAP
 from architectures.Encoders.EncoderSimple import EncoderSimple
 from architectures.Explorers.ExplorerIdentity import ExplorerIdentity
 from architectures.transmitters import TransmitterIdentity
@@ -9,7 +9,7 @@ from architectures.Decoders.DecoderSimple import DecoderSimple
 from architectures.RewardCalculators.RewardCalculatorUMAP import RewardCalculatorUMAP
 
 from architectures.PropertyCalculators.PropertyCalculatorNone import PropertyCalculatorNone
-from architectures.Samplers.SamplerVAE import SamplerVAE
+from architectures.samplers import SamplerVAE
 from architectures.Encoders.EncoderVAE import EncoderVAE
 from architectures.Explorers.ExplorerVAE import ExplorerVAE
 from architectures.RewardCalculators.RewardCalculatorVAE import RewardCalculatorVAE

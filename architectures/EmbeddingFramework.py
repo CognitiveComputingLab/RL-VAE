@@ -130,6 +130,7 @@ class EmbeddingFramework:
             # run through epoch
             while not self.sampler.epoch_done:
                 self.run_iteration(epoch)
+                return
 
             # plot latent space
             if epoch % plot_interval == 0:
@@ -141,12 +142,13 @@ class EmbeddingFramework:
         :param epoch: current training epoch
         """
         # get batch of points
-        ind = self.sampler.next_batch_indices()
-        x_a, _ = self.sampler.get_points_from_indices(ind)
-        x_a = x_a.to(self.__device)
+        sample_out = self.sampler(self.property_calculator.high_dim_property)
+        print("sample out: ", sample_out)
 
         # pass through encoder
-        out = self.encoder_agent(x_a)
+        # encoder_out = self.encoder_agent(sample_out)
+
+        return
         z_a = self.explorer.get_point_from_output(out, epoch)
 
         # get complementary indices corresponding to p1

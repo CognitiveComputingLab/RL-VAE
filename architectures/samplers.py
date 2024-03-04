@@ -27,10 +27,11 @@ class Sampler(nn.Module, abc.ABC):
     def get_points_from_indices(self, indices):
         """
         retrieves actual points from given index tensor
+        all points are automatically transferred to the device
         """
         points, colours = self._data_loader.dataset[indices]
-        points = points.squeeze(0)
-        colours = colours.squeeze(0)
+        points = points.squeeze(0).to(self._device)
+        colours = colours.squeeze(0).to(self._device)
         return points, colours
 
     @abc.abstractmethod
@@ -72,7 +73,9 @@ class SamplerVAE(Sampler):
         """
         get next batch of points by naively looping through the dataset
         gets the indices first but only returns the actual points
-        :return: pytorch tensor of shape [batch_size, high_dim]
+        :return: tuple of two pytorch tensors
+            - point coordinates, shape: [batch_size, high_dim]
+            - colours of points, shape: [batch_size, 3]
         """
         # get indices of batch
         indices_tensor = self.get_batch_indices()
@@ -92,8 +95,8 @@ class SamplerUMAP(SamplerVAE):
         get indices of next batch of points by naively looping through the dataset
         additionally get complementary points
         :return: 4 tensors
-            - p1: normal point batch tensor, shape: [batch_size, high_dim]
-            - p2: complementary point batch tensor, shape: [batch_size, high_dim]
+            - p1: tuple of two pytorch tensors (coordinates, colours) for normal points
+            - p2: tuple of two pytorch tensors (coordinates, colours) for complementary points
             - ind1: normal point indices tensor, shape: [batch_size]
             - ind2: complementary point indices tensor, shape: [batch_size]
         """
@@ -111,18 +114,18 @@ class SamplerUMAP(SamplerVAE):
 
         return p1, p2, ind1, ind2
 
-    def next_complementary_indices(self, property_calculator):
+    def next_complementary_indices(self, high_dim_properties):
         """
         Get a single complementary index for each point in the current batch,
         randomly choosing between a positive and negative sample with equal probability.
-        :param property_calculator: PropertyCalculator Object
+        :param high_dim_properties: high dimensional property matrix calculated by PropertyCalculator object
         :return: A tensor of shape [batch_size, 1] where each entry is the index of the complementary point.
         """
         complementary_indices = []
 
         for sample_index in self._current_x_batch:
             # get probability tensor from numpy
-            probabilities = property_calculator.high_dim_property[sample_index]
+            probabilities = high_dim_properties[sample_index]
 
             # exclude the specified index
             adjusted_probabilities = probabilities.clone()
