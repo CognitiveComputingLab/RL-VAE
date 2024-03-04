@@ -146,7 +146,7 @@ class EmbeddingFramework:
         print("sample out: ", sample_out)
 
         # pass through encoder
-        # encoder_out = self.encoder_agent(sample_out)
+        encoder_out = self.encoder_agent(sample_out)
 
         return
         z_a = self.explorer.get_point_from_output(out, epoch)
