@@ -186,7 +186,7 @@ class ExplorerVariance(Explorer):
         log_var = torch.Tensor([[self.current_exploration] * mu.shape[1] for _ in range(mu.shape[0])]).to(self._device)
 
         # no exploration
-        if self.evaluation_active:
+        if not self.training:
             return mu
 
         # re-parameterization trick

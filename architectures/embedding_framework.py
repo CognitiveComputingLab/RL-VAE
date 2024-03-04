@@ -156,31 +156,17 @@ class EmbeddingFramework:
 
         # compute low and high dimensional properties
         property_out = self.property_calculator(explorer_out)
-        print("property out: ", property_out)
-        return
-
-        # get complementary indices corresponding to p1
-        ind2 = self.sampler.next_complementary_indices(self.property_calculator)
-        property_loss = 0
-        if ind2 is not None:
-            # get points
-            x_a2, _ = self.sampler.get_points_from_indices(ind2)
-            x_a2 = x_a2.to(self.__device)
-
-            # pass through encoder
-            z_a2 = self.encoder_agent(x_a2)
-            z_a2 = self.explorer.get_point_from_output(z_a2)
-
-            # compare high and low dims
-            low_dim_prop = self.property_calculator.get_low_dim_property(z_a, z_a2)
-            high_dim_prop = self.property_calculator.high_dim_property[ind, ind2].to(self.__device)
-            property_loss = -self.reward_calculator.calculate_property_reward(high_dim_prop, low_dim_prop)
+        # print("property out: ", property_out)
 
         # communicate through transmission channel
-        z_b = self.transmitter(z_a)
+        transmitter_out = self.transmitter(explorer_out)
+        # print("transmitter out: ", transmitter_out)
 
         # pass through decoder
-        x_b = self.decoder_agent(z_b)
+        decoder_out = self.decoder_agent(transmitter_out)
+        print("decoder out: ", decoder_out)
+
+        return
 
         # compare original point and reconstructed point
         reconstruction_loss = -self.reward_calculator.calculate_reconstruction_reward(x_a, x_b, out, self.explorer)
