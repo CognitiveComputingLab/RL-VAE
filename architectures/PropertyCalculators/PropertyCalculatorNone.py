@@ -15,9 +15,6 @@ class PropertyCalculatorNone(PropertyCalculator):
     def calculate_high_dim_property(self):
         return
 
-    def get_high_dim_property(self, ind1, ind2):
-        return
-
     def get_low_dim_property(self, p1, p2):
         return
 

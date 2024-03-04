@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 from torch.nn import Module
 from architectures.PropertyCalculators.PropertyCalculator import PropertyCalculator
-from architectures.Samplers.Sampler import Sampler
+from architectures.samplers import Sampler
 from architectures.Explorers.Explorer import Explorer
 from architectures.transmitters import Transmitter
 from architectures.RewardCalculators.RewardCalculator import RewardCalculator

@@ -51,16 +51,6 @@ class PropertyCalculatorUMAP(PropertyCalculator):
         self.__a = p[0]
         self.__b = p[1]
 
-    def get_high_dim_property(self, ind1, ind2):
-        """
-        get the high dimensional property from saved values
-        in this case the symmetric probability of being neighbours between high dimensional points
-        :param ind1: index of first high dimensional point
-        :param ind2: index of second high dimensional point
-        """
-        high_prob = self.__symmetric_probabilities[ind1][ind2]
-        return high_prob
-
     def get_low_dim_property(self, p1, p2):
         """
         calculate low dimensional property
