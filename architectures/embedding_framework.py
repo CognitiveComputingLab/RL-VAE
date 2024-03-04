@@ -2,7 +2,7 @@ import torch
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 from torch.nn import Module
-from architectures.PropertyCalculators.PropertyCalculator import PropertyCalculator
+from architectures.property_calculators import PropertyCalculator
 from architectures.samplers import Sampler
 from architectures.explorers import Explorer
 from architectures.transmitters import Transmitter
@@ -152,8 +152,11 @@ class EmbeddingFramework:
 
         # choose action based on exploration
         explorer_out = self.explorer(encoder_out, epoch)
-        print("explorer out: ", explorer_out)
+        # print("explorer out: ", explorer_out)
 
+        # compute low and high dimensional properties
+        property_out = self.property_calculator(explorer_out)
+        print("property out: ", property_out)
         return
 
         # get complementary indices corresponding to p1

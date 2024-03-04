@@ -1,9 +1,71 @@
+import abc
 import torch
+import torch.nn as nn
 import numpy as np
 from scipy import optimize
 from tqdm import tqdm
 from sklearn.metrics.pairwise import euclidean_distances
-from architectures.PropertyCalculators.PropertyCalculator import PropertyCalculator
+
+
+class PropertyCalculator(nn.Module, abc.ABC):
+    def __init__(self, device, data_loader):
+        super().__init__()
+
+        self._device = device
+        self._data_loader = data_loader
+
+    @abc.abstractmethod
+    def symmetrize(self, prob):
+        """
+        symmetrize the high dimensional property
+        """
+        raise NotImplementedError
+
+    ###############################
+    # high dim property functions #
+    ###############################
+
+    @property
+    @abc.abstractmethod
+    def high_dim_property(self):
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def calculate_high_dim_property(self):
+        """
+        compute all properties required for comparing high dimensional points
+        """
+        raise NotImplementedError
+
+    ###################################
+    # standard pytorch module methods #
+    ###################################
+
+    @abc.abstractmethod
+    def forward(self, explorer_out):
+        """
+        compute properties to calculate
+        :return: low and high dimensional properties according to the explorer output
+        """
+        raise NotImplementedError
+
+
+class PropertyCalculatorNone(PropertyCalculator):
+    def __init__(self, device, data_loader):
+        super().__init__(device, data_loader)
+
+    @property
+    def high_dim_property(self):
+        return
+
+    def symmetrize(self, prob):
+        return
+
+    def calculate_high_dim_property(self):
+        return
+
+    def forward(self, explorer_out):
+        return
 
 
 class PropertyCalculatorUMAP(PropertyCalculator):
@@ -18,9 +80,31 @@ class PropertyCalculatorUMAP(PropertyCalculator):
         self.__a = None
         self.__b = None
 
-    ###################################################
-    # overwriting main property calculation functions #
-    ###################################################
+    ##########################
+    # pytorch module forward #
+    ##########################
+
+    def forward(self, explorer_out):
+        """
+        get low and high dimensional properties as defined in the UMAP paper
+        high dimensional property should already be calculated, needs to be retrieved for explorer_out
+        low dimensional property is calculated based on distributions with hyperparameters of high dim
+        :return: tuple of tensors
+            - low dimensional properties
+            - high dimensional properties
+        """
+        # get points from exploration
+        p1, p2, ind1, ind2 = explorer_out
+
+        # get properties
+        low_dim_property = self.get_low_dim_property(p1, p2)
+        high_dim_property = self.high_dim_property[ind1, ind2].float().to(self._device)
+
+        return low_dim_property, high_dim_property
+
+    ##############################################
+    # overwriting property calculation functions #
+    ##############################################
 
     @property
     def high_dim_property(self):
