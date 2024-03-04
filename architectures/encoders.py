@@ -53,10 +53,13 @@ class EncoderUMAP(EncoderSimple):
         :param sample_out: output of umap sampling, includes indices etc.
         """
         # get regular points from sample_out
-        p1, _, _, _ = sample_out
+        p1, p2, _, _ = sample_out
 
+        # pass regular and complementary points through network
         mu1 = super().forward(p1)
-        return mu1
+        mu2 = super().forward(p2)
+
+        return mu1, mu2
 
 
 class EncoderVAE(nn.Module):

@@ -4,7 +4,7 @@ from architectures.PropertyCalculators.PropertyCalculatorUMAP import PropertyCal
 from architectures.samplers import SamplerUMAP
 from architectures.encoders import EncoderUMAP
 from architectures.encoders import EncoderSimple
-from architectures.Explorers.ExplorerIdentity import ExplorerIdentity
+from architectures.explorers import ExplorerIdentity
 from architectures.transmitters import TransmitterIdentity
 from architectures.Decoders.DecoderSimple import DecoderSimple
 from architectures.RewardCalculators.RewardCalculatorUMAP import RewardCalculatorUMAP
@@ -12,14 +12,14 @@ from architectures.RewardCalculators.RewardCalculatorUMAP import RewardCalculato
 from architectures.PropertyCalculators.PropertyCalculatorNone import PropertyCalculatorNone
 from architectures.samplers import SamplerVAE
 from architectures.encoders import EncoderVAE
-from architectures.Explorers.ExplorerVAE import ExplorerVAE
+from architectures.explorers import ExplorerVAE
 from architectures.RewardCalculators.RewardCalculatorVAE import RewardCalculatorVAE
 
 from architectures.encoders import EncoderKHeadVAE
-from architectures.Explorers.ExplorerKHeadVAE import ExplorerKHeadVAE, ExplorerKHeadVAEDecreasing
+from architectures.explorers import ExplorerKHeadVAE, ExplorerKHeadVAEDecreasing
 from architectures.RewardCalculators.RewardCalculatorKHeadVAE import RewardCalculatorKHeadVAE
 
-from architectures.Explorers.ExplorerVariance import ExplorerVarianceDecreasing
+from architectures.explorers import ExplorerVarianceDecreasing
 
 
 def preset_umap(device, input_dim, output_dim, data_loader):

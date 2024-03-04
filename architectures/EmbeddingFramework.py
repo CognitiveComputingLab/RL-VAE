@@ -4,7 +4,7 @@ from tqdm import tqdm
 from torch.nn import Module
 from architectures.PropertyCalculators.PropertyCalculator import PropertyCalculator
 from architectures.samplers import Sampler
-from architectures.Explorers.Explorer import Explorer
+from architectures.explorers import Explorer
 from architectures.transmitters import Transmitter
 from architectures.RewardCalculators.RewardCalculator import RewardCalculator
 
@@ -130,7 +130,6 @@ class EmbeddingFramework:
 
             # run through epoch
             while not self.sampler.epoch_done:
-                print("running iteration")
                 self.run_iteration(epoch)
                 return
 
@@ -145,14 +144,17 @@ class EmbeddingFramework:
         """
         # get batch of points
         sample_out = self.sampler(self.property_calculator.high_dim_property)
-        print("sample out: ", sample_out)
+        # print("sample out: ", sample_out)
 
         # pass through encoder
         encoder_out = self.encoder_agent(sample_out)
-        print("encoder out: ", encoder_out)
+        # print("encoder out: ", encoder_out)
+
+        # choose action based on exploration
+        explorer_out = self.explorer(encoder_out, epoch)
+        print("explorer out: ", explorer_out)
 
         return
-        z_a = self.explorer.get_point_from_output(out, epoch)
 
         # get complementary indices corresponding to p1
         ind2 = self.sampler.next_complementary_indices(self.property_calculator)
