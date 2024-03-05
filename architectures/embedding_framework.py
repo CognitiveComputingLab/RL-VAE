@@ -111,11 +111,12 @@ class EmbeddingFramework:
         """
         # before running, check if everything is set up correctly
         self.check_completeness()
+        self.init_optimizers()
 
         # distance calculation for high dimensional data
         self.property_calculator.calculate_high_dim_property()
 
-        print("running for: ", epochs)
+        print(f"Starting training for {epochs} epochs")
         for epoch in tqdm(range(epochs), disable=self.disable_tqdm):
             # tell the sampler that a new epoch is starting
             self.sampler.reset_epoch()
@@ -136,44 +137,49 @@ class EmbeddingFramework:
         """
         # get batch of points
         sample_out = self.sampler(self.property_calculator.high_dim_property)
-        # print("sample out: ", sample_out)
 
-        # pass through encoder
+        # pass through encoder network
         encoder_out = self.encoder_agent(sample_out)
-        # print("encoder out: ", encoder_out)
 
         # choose action based on exploration
         explorer_out = self.explorer(encoder_out, epoch)
-        # print("explorer out: ", explorer_out)
 
         # compute low and high dimensional properties
         property_out = self.property_calculator(explorer_out)
-        # print("property out: ", property_out)
 
         # communicate through transmission channel
         transmitter_out = self.transmitter(explorer_out)
-        # print("transmitter out: ", transmitter_out)
 
-        # pass through decoder
-        decoder_out = self.decoder_agent(transmitter_out)
-        print("decoder out: ", decoder_out)
+        # detach output from computational graph
+        if type(transmitter_out) is tuple:
+            transmitter_out_detached = tuple(t.detach() for t in transmitter_out)
+        else:
+            transmitter_out_detached = transmitter_out.detach()
 
+        # pass through decoder network
+        decoder_out = self.decoder_agent(transmitter_out_detached)
+
+        # get rewards / loss for training
         encoder_reward, decoder_reward, t_reward = self.reward_calculator(sample_out, encoder_out, explorer_out,
                                                                           property_out, transmitter_out, decoder_out)
+        encoder_loss = -encoder_reward
+        decoder_loss = -decoder_reward
+        total_loss = -t_reward
 
-        print("rewards: ", type(encoder_reward), type(decoder_reward), type(t_reward))
-        return
+        # train the encoder on encoder_loss
+        self.__encoder_optimizer.zero_grad()
+        encoder_loss.backward()
+        self.__encoder_optimizer.step()
 
-        # compare original point and reconstructed point
-        reconstruction_loss = -self.reward_calculator.calculate_reconstruction_reward(x_a, x_b, out, self.explorer)
+        # train decoder on decoder_loss
+        self.__decoder_optimizer.zero_grad()
+        decoder_loss.backward()
+        self.__decoder_optimizer.step()
 
-        # train the encoder and decoder
-        total_loss = reconstruction_loss + property_loss
-        self.__reconstruction_optimizer.zero_grad()
-        self.__property_optimizer.zero_grad()
+        # jointly train encoder and decoder on total_loss
+        self.__total_optimizer.zero_grad()
         total_loss.backward()
-        self.__reconstruction_optimizer.step()
-        self.__property_optimizer.step()
+        self.__total_optimizer.step()
 
     #################
     # visualisation #
