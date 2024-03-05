@@ -159,14 +159,8 @@ class EmbeddingFramework(nn.Module):
         # communicate through transmission channel
         transmitter_out = self.transmitter(explorer_out)
 
-        # detach output from computational graph
-        if type(transmitter_out) is tuple:
-            transmitter_out_detached = tuple(t.detach() for t in transmitter_out)
-        else:
-            transmitter_out_detached = transmitter_out.detach()
-
         # pass through decoder network
-        decoder_out = self.decoder_agent(transmitter_out_detached)
+        decoder_out = self.decoder_agent(transmitter_out)
 
         # get rewards / loss for training
         encoder_reward, decoder_reward, t_reward = self.reward_calculator(sample_out, encoder_out, explorer_out,
@@ -175,15 +169,19 @@ class EmbeddingFramework(nn.Module):
         decoder_loss = -decoder_reward
         total_loss = -t_reward
 
-        # train the encoder on encoder_loss
-        self.__encoder_optimizer.zero_grad()
-        encoder_loss.backward()
-        self.__encoder_optimizer.step()
+        # TODO this is a temporary solution
+        total_loss += encoder_loss + decoder_loss
 
-        # train decoder on decoder_loss
-        self.__decoder_optimizer.zero_grad()
-        decoder_loss.backward()
-        self.__decoder_optimizer.step()
+        # TODO (how to train encoder exclusively and decoder exclusively)
+        # # train the encoder on encoder_loss
+        # self.__encoder_optimizer.zero_grad()
+        # encoder_loss.backward()
+        # self.__encoder_optimizer.step()
+        #
+        # # train decoder on decoder_loss
+        # self.__decoder_optimizer.zero_grad()
+        # decoder_loss.backward()
+        # self.__decoder_optimizer.step()
 
         # jointly train encoder and decoder on total_loss
         self.__total_optimizer.zero_grad()

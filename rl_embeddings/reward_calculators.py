@@ -10,7 +10,7 @@ class RewardCalculator(nn.Module, abc.ABC):
         self._device = device
 
         # general trivial reward
-        self._trivial_reward = torch.tensor([0.], requires_grad=True)
+        self._trivial_reward = torch.tensor(0., requires_grad=True).to(self._device)
 
     @abc.abstractmethod
     def forward(self, s_o, enc_o, exp_o, p_o, tr_o, dec_o,) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
