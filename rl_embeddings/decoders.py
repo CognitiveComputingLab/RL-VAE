@@ -1,5 +1,5 @@
 import torch.nn as nn
-from architectures.encoders import GeneralModel
+from rl_embeddings.encoders import GeneralModel
 
 
 class DecoderSimple(nn.Module):

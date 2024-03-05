@@ -12,7 +12,17 @@ class PropertyCalculator(nn.Module, abc.ABC):
         super().__init__()
 
         self._device = device
+        self.__disable_tqdm = False
+
         self._data_loader = data_loader
+
+    @property
+    def disable_tqdm(self):
+        return self.__disable_tqdm
+
+    @disable_tqdm.setter
+    def disable_tqdm(self, value):
+        self.__disable_tqdm = value
 
     @abc.abstractmethod
     def symmetrize(self, prob):
@@ -196,7 +206,7 @@ class PropertyCalculatorUMAP(PropertyCalculator):
     def calculate_high_dim_probabilities(self, dist, rho, n):
         prob = np.zeros((n, n))
         sigma_array = []
-        for dist_row in tqdm(range(n)):
+        for dist_row in tqdm(range(n), disable=self.disable_tqdm):
             func = lambda sigma: self.compute_n_neighbours(self.prob_high_dim(dist, rho, sigma, dist_row))
             binary_search_result = self.sigma_binary_search(func)
             prob[dist_row] = self.prob_high_dim(dist, rho, binary_search_result, dist_row)

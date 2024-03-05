@@ -1,16 +1,19 @@
 import torch
+import torch.nn as nn
 import matplotlib.pyplot as plt
+from torch.nn.modules.module import T
 from tqdm import tqdm
-from torch.nn import Module
-from architectures.property_calculators import PropertyCalculator
-from architectures.samplers import Sampler
-from architectures.explorers import Explorer
-from architectures.transmitters import Transmitter
-from architectures.reward_calculators import RewardCalculator
+from rl_embeddings.property_calculators import PropertyCalculator
+from rl_embeddings.samplers import Sampler
+from rl_embeddings.explorers import Explorer
+from rl_embeddings.transmitters import Transmitter
+from rl_embeddings.reward_calculators import RewardCalculator
 
 
-class EmbeddingFramework:
+class EmbeddingFramework(nn.Module):
     def __init__(self, device):
+        super().__init__()
+
         # init general
         self.__device = device
         self.__disable_tqdm = False
@@ -44,7 +47,10 @@ class EmbeddingFramework:
 
     @disable_tqdm.setter
     def disable_tqdm(self, value):
-        self.disable_tqdm = value
+        self.__disable_tqdm = value
+
+        if self.property_calculator:
+            self.property_calculator.disable_tqdm = value
 
     def _create_property_for_component(self, name):
         """
@@ -57,12 +63,16 @@ class EmbeddingFramework:
 
         def setter(instance, value):
             expected_type_dict = {'property_calculator': PropertyCalculator, 'sampler': Sampler, 'explorer': Explorer,
-                                  'encoder_agent': Module, 'decoder_agent': Module, 'transmitter': Transmitter,
+                                  'encoder_agent': nn.Module, 'decoder_agent': nn.Module, 'transmitter': Transmitter,
                                   'reward_calculator': RewardCalculator}
 
             # check correct type
             if not isinstance(value, expected_type_dict[name]):
                 raise ValueError(f"Passed non {expected_type_dict[name].__name__} object as {name}.")
+
+            # handle tqdm
+            if name == 'property_calculator':
+                value.disable_tqdm = self.disable_tqdm
 
             setattr(instance, private_name, value)
 
@@ -103,7 +113,7 @@ class EmbeddingFramework:
     # training process #
     ####################
 
-    def train(self, epochs=100, plot_interval=50):
+    def train_model(self, epochs=100, plot_interval=50):
         """
         train the encoder to produce an embedding for the given dataset
         :param epochs: number of epochs to train for as int
@@ -117,20 +127,19 @@ class EmbeddingFramework:
         self.property_calculator.calculate_high_dim_property()
 
         print(f"Starting training for {epochs} epochs")
-        for epoch in tqdm(range(epochs), disable=self.disable_tqdm):
+        for epoch in tqdm(range(epochs), disable=self.__disable_tqdm):
             # tell the sampler that a new epoch is starting
             self.sampler.reset_epoch()
 
             # run through epoch
             while not self.sampler.epoch_done:
-                self.run_iteration(epoch)
-                return
+                self.forward(epoch)
 
             # plot latent space
             if epoch % plot_interval == 0:
                 self.plot_latent(f"images/latent_{epoch}.png")
 
-    def run_iteration(self, epoch):
+    def forward(self, epoch):
         """
         run single iteration of training loop
         :param epoch: current training epoch
@@ -193,8 +202,7 @@ class EmbeddingFramework:
         """
         # init
         self.sampler.reset_epoch()
-        self.explorer.eval()
-        self.sampler.eval()
+        self.eval()
 
         while not self.sampler.epoch_done:
             # get batch of points
@@ -223,5 +231,4 @@ class EmbeddingFramework:
         plt.close()
 
         # un-init
-        self.explorer.train()
-        self.sampler.train()
+        self.train(True)
