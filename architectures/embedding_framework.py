@@ -193,17 +193,23 @@ class EmbeddingFramework:
         """
         # init
         self.sampler.reset_epoch()
-        self.explorer.evaluation_active = True
+        self.explorer.eval()
+        self.sampler.eval()
 
         while not self.sampler.epoch_done:
             # get batch of points
-            ind = self.sampler.next_batch_indices()
-            x, y = self.sampler.get_points_from_indices(ind)
-            x = x.to(self.__device)
+            sample_out = self.sampler(self.property_calculator.high_dim_property)
+            p1 = sample_out
+            if len(p1) > 2:
+                p1 = p1[0]
+            _, y = p1
 
             # pass through encoder and get points
-            out = self.encoder_agent(x)
-            z = self.explorer.get_point_from_output(out)
+            encoder_out = self.encoder_agent(sample_out)
+            explorer_out = self.explorer(encoder_out, epoch=0)
+            z = explorer_out
+            if type(z) is tuple:
+                z = z[0]
             z = z.detach().to('cpu').numpy()
 
             # plot batch of points
@@ -217,4 +223,5 @@ class EmbeddingFramework:
         plt.close()
 
         # un-init
-        self.explorer.evaluation_active = False
+        self.explorer.train()
+        self.sampler.train()

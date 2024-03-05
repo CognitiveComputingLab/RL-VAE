@@ -103,11 +103,11 @@ class SamplerUMAP(SamplerVAE):
         # normal point indices
         ind1 = self.get_batch_indices()
 
-        # complementary point indices
-        ind2 = self.next_complementary_indices(high_dim_properties)
-
         # normal points
         p1 = self.get_points_from_indices(ind1)
+
+        # complementary point indices
+        ind2 = self.next_complementary_indices(high_dim_properties)
 
         # complementary points
         p2 = self.get_points_from_indices(ind2)
