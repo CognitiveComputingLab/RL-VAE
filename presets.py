@@ -7,17 +7,18 @@ from architectures.encoders import EncoderSimple
 from architectures.explorers import ExplorerIdentity
 from architectures.transmitters import TransmitterIdentity
 from architectures.decoders import DecoderSimple
-from architectures.RewardCalculators.RewardCalculatorUMAP import RewardCalculatorUMAP
+from architectures.reward_calculators import RewardCalculatorUMAP
+from architectures.reward_calculators import RewardCalculatorVarianceVAE
 
 from architectures.property_calculators import PropertyCalculatorNone
 from architectures.samplers import SamplerVAE
 from architectures.encoders import EncoderVAE
 from architectures.explorers import ExplorerVAE
-from architectures.RewardCalculators.RewardCalculatorVAE import RewardCalculatorVAE
+from architectures.reward_calculators import RewardCalculatorVAE
 
 from architectures.encoders import EncoderKHeadVAE
 from architectures.explorers import ExplorerKHeadVAEDecreasing
-from architectures.RewardCalculators.RewardCalculatorKHeadVAE import RewardCalculatorKHeadVAE
+from architectures.reward_calculators import RewardCalculatorKHeadVAE
 
 from architectures.explorers import ExplorerVarianceDecreasing
 
@@ -31,7 +32,6 @@ def preset_umap(device, input_dim, output_dim, data_loader):
     ef.transmitter = TransmitterIdentity(device)
     ef.decoder_agent = DecoderSimple(input_dim, output_dim).to(device)
     ef.reward_calculator = RewardCalculatorUMAP(device)
-    ef.set_learning_mode(encoder_reconstruction=False)
     return ef
 
 
@@ -44,7 +44,6 @@ def preset_vae(device, input_dim, output_dim, data_loader):
     ef.transmitter = TransmitterIdentity(device)
     ef.decoder_agent = DecoderSimple(input_dim, output_dim).to(device)
     ef.reward_calculator = RewardCalculatorVAE(device)
-    ef.set_learning_mode(encoder_reconstruction=True)
     return ef
 
 
@@ -57,7 +56,6 @@ def preset_k_head_vae(device, input_dim, output_dim, data_loader, k=2):
     ef.transmitter = TransmitterIdentity(device)
     ef.decoder_agent = DecoderSimple(input_dim, output_dim).to(device)
     ef.reward_calculator = RewardCalculatorKHeadVAE(device)
-    ef.set_learning_mode(encoder_reconstruction=True)
     return ef
 
 
@@ -69,6 +67,5 @@ def preset_variance_vae(device, input_dim, output_dim, data_loader):
     ef.explorer = ExplorerVarianceDecreasing(device)
     ef.transmitter = TransmitterIdentity(device)
     ef.decoder_agent = DecoderSimple(input_dim, output_dim).to(device)
-    ef.reward_calculator = RewardCalculatorUMAP(device)
-    ef.set_learning_mode(encoder_reconstruction=True)
+    ef.reward_calculator = RewardCalculatorVarianceVAE(device)
     return ef

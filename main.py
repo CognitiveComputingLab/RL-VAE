@@ -27,12 +27,15 @@ if __name__ == "__main__":
 
     """
     TODO:
-    - implement k-head vae into framework (done)
-    - implement variance exploration vae into framework (done)
-    - implement T-SNE
-    - remove old files (done)
+    - think of optimiser / reward system (done)
+    - convert reward calculators (done)
+    - convert embedding_framework class
+    - cleanup
+        - eval
+        - tqdm
+        - etc.
+    - implement t-sne
+    - more generality in some of the classes?
     - compatibility check?
-    - add some extensions for visualisation??
-    - support more data input??
-    - make software package??
+    - module
     """

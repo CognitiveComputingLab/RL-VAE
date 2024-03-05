@@ -6,7 +6,7 @@ from architectures.property_calculators import PropertyCalculator
 from architectures.samplers import Sampler
 from architectures.explorers import Explorer
 from architectures.transmitters import Transmitter
-from architectures.RewardCalculators.RewardCalculator import RewardCalculator
+from architectures.reward_calculators import RewardCalculator
 
 
 class EmbeddingFramework:
@@ -30,8 +30,9 @@ class EmbeddingFramework:
             self._create_property_for_component(name)
 
         # non-class components
-        self.__property_optimizer = None
-        self.__reconstruction_optimizer = None
+        self.__encoder_optimizer = None
+        self.__decoder_optimizer = None
+        self.__total_optimizer = None
 
     #######################
     # getters and setters #
@@ -67,23 +68,6 @@ class EmbeddingFramework:
 
         setattr(self.__class__, name, property(getter, setter))
 
-    def set_learning_mode(self, encoder_reconstruction):
-        """
-        define how the neural networks (encoder / decoder) should learn
-        :param encoder_reconstruction: boolean, should the encoder be trained on the reconstruction reward
-        """
-        if not self.encoder_agent or not self.decoder_agent:
-            raise ValueError("The Encoder and Decoder need to be set, before the learning mode is set.")
-
-        # set the optimizers
-        if encoder_reconstruction:
-            self.__reconstruction_optimizer = torch.optim.Adam(
-                list(self.encoder_agent.parameters()) + list(self.decoder_agent.parameters()))
-            self.__property_optimizer = torch.optim.Adam(list(self.encoder_agent.parameters()))
-        else:
-            self.__reconstruction_optimizer = torch.optim.Adam(list(self.decoder_agent.parameters()))
-            self.__property_optimizer = torch.optim.Adam(list(self.encoder_agent.parameters()))
-
     def check_completeness(self):
         """
         check if all components are set
@@ -104,8 +88,16 @@ class EmbeddingFramework:
             raise ValueError("Decoder Object has not been set.")
         if not self.reward_calculator:
             raise ValueError("Reward Calculator has not been set.")
-        if not self.__reconstruction_optimizer or not self.__property_optimizer:
-            raise ValueError("Learning mode has not been set.")
+
+    def init_optimizers(self):
+        """
+        initialize the optimizers for encoder and decoder training
+        """
+        # init optimizers
+        self.__encoder_optimizer = torch.optim.Adam(list(self.encoder_agent.parameters()))
+        self.__decoder_optimizer = torch.optim.Adam(list(self.decoder_agent.parameters()))
+        self.__total_optimizer = torch.optim.Adam(
+            list(self.encoder_agent.parameters()) + list(self.decoder_agent.parameters()))
 
     ####################
     # training process #
@@ -166,6 +158,10 @@ class EmbeddingFramework:
         decoder_out = self.decoder_agent(transmitter_out)
         print("decoder out: ", decoder_out)
 
+        encoder_reward, decoder_reward, t_reward = self.reward_calculator(sample_out, encoder_out, explorer_out,
+                                                                          property_out, transmitter_out, decoder_out)
+
+        print("rewards: ", type(encoder_reward), type(decoder_reward), type(t_reward))
         return
 
         # compare original point and reconstructed point
@@ -216,4 +212,3 @@ class EmbeddingFramework:
 
         # un-init
         self.explorer.evaluation_active = False
-
