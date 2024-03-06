@@ -20,6 +20,18 @@ def preset_umap(device, input_dim, output_dim, data_loader):
     return ef
 
 
+def preset_tsne(device, input_dim, output_dim, data_loader):
+    ef = EmbeddingFramework(device)
+    ef.property_calculator = property_calculators.PropertyCalculatorTSNE(device, data_loader)
+    ef.sampler = samplers.SamplerTSNE(device, data_loader)
+    ef.encoder_agent = encoders.EncoderTSNE(input_dim, output_dim).to(device)
+    ef.explorer = explorers.ExplorerIdentity(device)
+    ef.transmitter = transmitters.TransmitterIdentity(device)
+    ef.decoder_agent = decoders.DecoderSimple(input_dim, output_dim).to(device)
+    ef.reward_calculator = reward_calculators.RewardCalculatorTSNE(device)
+    return ef
+
+
 def preset_vae(device, input_dim, output_dim, data_loader):
     ef = EmbeddingFramework(device)
     ef.property_calculator = property_calculators.PropertyCalculatorNone(device, data_loader)

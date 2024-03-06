@@ -206,7 +206,7 @@ class EmbeddingFramework(nn.Module):
             # get batch of points
             sample_out = self.sampler(self.property_calculator.high_dim_property)
             p1 = sample_out
-            if len(p1) > 2:
+            if type(p1[0]) is tuple:
                 p1 = p1[0]
             _, y = p1
 

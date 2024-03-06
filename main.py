@@ -2,6 +2,7 @@ import torch
 import helper
 import presets
 from toy_data import data
+from rl_embeddings.property_calculators import PropertyCalculatorTSNE
 
 
 def get_device():
@@ -12,7 +13,7 @@ def get_device():
 if __name__ == "__main__":
     device = get_device()
 
-    toy_data = data.Sphere3D(n=1000).generate()
+    toy_data = data.Sphere3D(n=100).generate()
     toy_dataset = helper.ToyTorchDataset(toy_data)
     data_loader = torch.utils.data.DataLoader(
         toy_dataset,
@@ -20,7 +21,7 @@ if __name__ == "__main__":
         shuffle=False
     )
 
-    embedding_framework = presets.preset_umap(device, 3, 2, data_loader)
+    embedding_framework = presets.preset_tsne(device, 3, 2, data_loader)
     embedding_framework.disable_tqdm = False
     embedding_framework.train_model(epochs=5, plot_interval=20)
     embedding_framework.plot_latent(f"images/latent.png")

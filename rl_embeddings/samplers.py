@@ -86,6 +86,20 @@ class SamplerVAE(Sampler):
         return points
 
 
+class SamplerTSNE(SamplerVAE):
+    def __init__(self, device, data_loader):
+        super().__init__(device, data_loader)
+
+    def forward(self, high_dim_properties):
+        # get indices of batch
+        indices_tensor = self.get_batch_indices()
+
+        # get actual points
+        points = self.get_points_from_indices(indices_tensor)
+
+        return points, indices_tensor
+
+
 class SamplerUMAP(SamplerVAE):
     def __init__(self, device, data_loader):
         super().__init__(device, data_loader)

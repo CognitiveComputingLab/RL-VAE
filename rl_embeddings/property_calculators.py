@@ -25,7 +25,7 @@ class PropertyCalculator(nn.Module, abc.ABC):
         self.__disable_tqdm = value
 
     @abc.abstractmethod
-    def symmetrize(self, prob):
+    def symmetrize(self, prob, n):
         """
         symmetrize the high dimensional property
         """
@@ -68,7 +68,7 @@ class PropertyCalculatorNone(PropertyCalculator):
     def high_dim_property(self):
         return
 
-    def symmetrize(self, prob):
+    def symmetrize(self, prob, n):
         return
 
     def calculate_high_dim_property(self):
@@ -79,6 +79,7 @@ class PropertyCalculatorNone(PropertyCalculator):
 
 
 class PropertyCalculatorUMAP(PropertyCalculator):
+    # some code adapted from https://towardsdatascience.com/how-to-program-umap-from-scratch-e6eff67f55fe
     def __init__(self, device, data_loader):
         super().__init__(device, data_loader)
         # umap specific
@@ -120,7 +121,7 @@ class PropertyCalculatorUMAP(PropertyCalculator):
     def high_dim_property(self):
         return self.__symmetric_probabilities
 
-    def symmetrize(self, prob):
+    def symmetrize(self, prob, n):
         return prob + np.transpose(prob) - np.multiply(prob, np.transpose(prob))
 
     def calculate_high_dim_property(self):
@@ -136,7 +137,7 @@ class PropertyCalculatorUMAP(PropertyCalculator):
         prob = self.calculate_high_dim_probabilities(dist, rho, n)
 
         # get symmetric from both directions
-        sym_probabilities = self.symmetrize(prob)
+        sym_probabilities = self.symmetrize(prob, n)
         self.__symmetric_probabilities = torch.tensor(sym_probabilities).float()
 
         # compute a and b parameters based on min distance
@@ -230,3 +231,134 @@ class PropertyCalculatorUMAP(PropertyCalculator):
             if np.abs(self.k_neighbours - k_of_sigma(approx_sigma)) <= 1e-5:
                 break
         return approx_sigma
+
+
+class PropertyCalculatorTSNE(PropertyCalculator):
+    # some code adapted from https://towardsdatascience.com/understanding-t-sne-by-implementing-2baf3a987ab3
+    def __init__(self, device, data_loader):
+        super().__init__(device, data_loader)
+        self.__symmetric_probabilities = None
+
+        # hyperparameters
+        self.perplexity = 15
+
+    @property
+    def high_dim_property(self):
+        return self.__symmetric_probabilities
+
+    def symmetrize(self, prob, n):
+        return (prob + prob.T) / (2. * n)
+
+    def calculate_high_dim_property(self):
+        """
+        calculate high dimensional distances according to T-SNE paper
+        this is called only once before proper training starts
+        later used for comparison with lower dimensional distances
+        """
+        # recover real dataset from data loader
+        dataset = self._data_loader.dataset
+        n = dataset.data.shape[0]
+
+        # pairwise distances between points as matrix
+        pwd = self.pairwise_distances(dataset.data)
+
+        # binary search for sigma values according to perplexity hyperparameter
+        sigmas = self.find_sigmas(pwd)
+
+        # get conditional pairwise distances
+        c_pwd = self.p_conditional(pwd, sigmas)
+
+        self.__symmetric_probabilities = c_pwd
+
+    def get_low_dim_property(self, p1):
+        """
+        low dim property based on encoded points
+        """
+        distances = self.pairwise_distances_torch(p1)
+        nom = 1 / (1 + distances)
+        nom.fill_diagonal_(0)
+        return nom / torch.sum(torch.sum(nom))
+
+    def forward(self, explorer_out):
+        """
+        get low and high dimensional properties as defined in the TSNE paper
+        high dimensional property should already be calculated, needs to be retrieved for explorer_out
+        low dimensional property is calculated based on distributions with hyperparameters of high dim
+        :return: tuple of tensors
+            - low dimensional properties
+            - high dimensional properties
+        """
+        # get points from exploration
+        p1, ind1 = explorer_out
+
+        # low dim distances
+        low_dist = self.get_low_dim_property(p1)
+
+        # high dim distances for this specific batch
+        high_dist = self.high_dim_property[ind1][:, ind1]
+        # normalize according to batch
+        high_dist = high_dist / high_dist.sum(axis=1).reshape([-1, 1])
+        # make distances symmetric
+        high_symmetric_distances = self.symmetrize(high_dist, len(ind1))
+        # convert to tensor, do not need any grad
+        high_symmetric_distances = torch.tensor(high_symmetric_distances).float().to(self._device)
+        high_symmetric_distances.fill_diagonal_(0)
+
+        return low_dist, high_symmetric_distances
+
+    ##########################
+    # T-SNE helper functions #
+    ##########################
+
+    @staticmethod
+    def pairwise_distances(x):
+        return np.sum((x[None, :] - x[:, None]) ** 2, 2)
+
+    @staticmethod
+    def pairwise_distances_torch(x):
+        x = x.unsqueeze(1)
+        diff = x - x.transpose(0, 1)
+        dist_squared = torch.sum(diff ** 2, dim=2)
+        return dist_squared
+
+    @staticmethod
+    def p_conditional(dists, sigmas):
+        """
+        get conditional probabilities between points in high dimension
+        does NOT normalize, because this is done for the batch specifically
+        """
+        e = np.exp(-dists / (2 * np.square(sigmas.reshape((-1, 1)))))
+        np.fill_diagonal(e, 0.)
+        e += 1e-8
+        return e
+
+    @staticmethod
+    def perp(conditional_matrix):
+        ent = -np.sum(conditional_matrix * np.log2(conditional_matrix), 1)
+        return 2 ** ent
+
+    @staticmethod
+    def binary_search(func, goal, tol=1e-10, max_iters=1000, lower_bound=1e-20, upper_bound=10000):
+        """
+        binary search to find sigmas according to perplexity hyperparameter
+        """
+        guess = 0
+        for _ in range(max_iters):
+            guess = (upper_bound + lower_bound) / 2.
+            val = func(guess)
+
+            if val > goal:
+                upper_bound = guess
+            else:
+                lower_bound = guess
+
+            if np.abs(val - goal) <= tol:
+                return guess
+        return guess
+
+    def find_sigmas(self, dists):
+        found_sigmas = np.zeros(dists.shape[0])
+        for i in range(dists.shape[0]):
+            func = lambda sig: self.perp(self.p_conditional(dists[i:i + 1, :], np.array([sig])))
+            found_sigmas[i] = self.binary_search(func, self.perplexity)
+        return found_sigmas

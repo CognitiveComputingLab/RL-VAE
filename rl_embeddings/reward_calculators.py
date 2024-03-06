@@ -157,3 +157,29 @@ class RewardCalculatorVarianceVAE(RewardCalculator):
         total_reward = (-1) * total_loss
 
         return self._trivial_reward, self._trivial_reward, total_reward
+
+
+class RewardCalculatorTSNE(RewardCalculator):
+    def __init__(self, device):
+        super().__init__(device)
+
+    def forward(self, s_o, enc_o, exp_o, p_o, tr_o, dec_o,) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """
+        the reward for TSNE is based on the KL-divergence between high and low dim distributions
+        these distributions are given in the form of matrices (tensors)
+        both matrices need to sum up to 1 as they represent probability distributions
+        """
+        # get information from different steps of embedding process
+        q, p = p_o
+
+        # compute KL divergence loss
+        """kl_divergence = p * (torch.log(p) - torch.log(q))
+        kl_divergence.fill_diagonal_(0)
+        kl_divergence = kl_divergence.sum()
+        kl_reward = (-1) * kl_divergence"""
+
+        # compute MSE loss
+        mse = f.mse_loss(p, q, reduction='mean')
+        mse_reward = (-1) * mse
+
+        return mse_reward, self._trivial_reward, self._trivial_reward

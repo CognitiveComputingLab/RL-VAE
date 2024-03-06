@@ -43,6 +43,33 @@ class EncoderSimple(nn.Module):
         return mu1
 
 
+class EncoderTSNE(nn.Module):
+    def __init__(self, input_dim, latent_dim):
+        super(EncoderTSNE, self).__init__()
+        # assuming each point has the same dimension as input_dim
+        self.gm = GeneralModel(input_dim, [1024, 2048, 2048, 4096])
+
+        # output layers for each point
+        self.linear1 = nn.Linear(4096, latent_dim)
+
+    def forward(self, sample_out):
+        """
+        pass point through general model
+        :param sample_out: only contains x
+        """
+        # sample out only contains x
+        # get regular points from sample_out
+        p1, ind1 = sample_out
+        x, _ = p1
+
+        # pass through general model
+        x = self.gm(x)
+
+        # compute outputs for each point
+        mu1 = self.linear1(x)
+        return mu1, ind1
+
+
 class EncoderUMAP(EncoderSimple):
     def __init__(self, input_dim, latent_dim):
         super().__init__(input_dim, latent_dim)
