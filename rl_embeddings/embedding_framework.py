@@ -1,16 +1,18 @@
 import torch
+import torch.nn as nn
 import matplotlib.pyplot as plt
 from tqdm import tqdm
-from torch.nn import Module
-from architectures.PropertyCalculators.PropertyCalculator import PropertyCalculator
-from architectures.Samplers.Sampler import Sampler
-from architectures.Explorers.Explorer import Explorer
-from architectures.Transmitters.Transmitter import Transmitter
-from architectures.RewardCalculators.RewardCalculator import RewardCalculator
+from rl_embeddings.property_calculators import PropertyCalculator
+from rl_embeddings.samplers import Sampler
+from rl_embeddings.explorers import Explorer
+from rl_embeddings.transmitters import Transmitter
+from rl_embeddings.reward_calculators import RewardCalculator
 
 
-class EmbeddingFramework:
+class EmbeddingFramework(nn.Module):
     def __init__(self, device):
+        super().__init__()
+
         # init general
         self.__device = device
         self.__disable_tqdm = False
@@ -30,8 +32,9 @@ class EmbeddingFramework:
             self._create_property_for_component(name)
 
         # non-class components
-        self.__property_optimizer = None
-        self.__reconstruction_optimizer = None
+        self.__encoder_optimizer = None
+        self.__decoder_optimizer = None
+        self.__total_optimizer = None
 
     #######################
     # getters and setters #
@@ -43,7 +46,10 @@ class EmbeddingFramework:
 
     @disable_tqdm.setter
     def disable_tqdm(self, value):
-        self.disable_tqdm = value
+        self.__disable_tqdm = value
+
+        if self.property_calculator:
+            self.property_calculator.disable_tqdm = value
 
     def _create_property_for_component(self, name):
         """
@@ -56,33 +62,20 @@ class EmbeddingFramework:
 
         def setter(instance, value):
             expected_type_dict = {'property_calculator': PropertyCalculator, 'sampler': Sampler, 'explorer': Explorer,
-                                  'encoder_agent': Module, 'decoder_agent': Module, 'transmitter': Transmitter,
+                                  'encoder_agent': nn.Module, 'decoder_agent': nn.Module, 'transmitter': Transmitter,
                                   'reward_calculator': RewardCalculator}
 
             # check correct type
             if not isinstance(value, expected_type_dict[name]):
                 raise ValueError(f"Passed non {expected_type_dict[name].__name__} object as {name}.")
 
+            # handle tqdm
+            if name == 'property_calculator':
+                value.disable_tqdm = self.disable_tqdm
+
             setattr(instance, private_name, value)
 
         setattr(self.__class__, name, property(getter, setter))
-
-    def set_learning_mode(self, encoder_reconstruction):
-        """
-        define how the neural networks (encoder / decoder) should learn
-        :param encoder_reconstruction: boolean, should the encoder be trained on the reconstruction reward
-        """
-        if not self.encoder_agent or not self.decoder_agent:
-            raise ValueError("The Encoder and Decoder need to be set, before the learning mode is set.")
-
-        # set the optimizers
-        if encoder_reconstruction:
-            self.__reconstruction_optimizer = torch.optim.Adam(
-                list(self.encoder_agent.parameters()) + list(self.decoder_agent.parameters()))
-            self.__property_optimizer = torch.optim.Adam(list(self.encoder_agent.parameters()))
-        else:
-            self.__reconstruction_optimizer = torch.optim.Adam(list(self.decoder_agent.parameters()))
-            self.__property_optimizer = torch.optim.Adam(list(self.encoder_agent.parameters()))
 
     def check_completeness(self):
         """
@@ -104,14 +97,22 @@ class EmbeddingFramework:
             raise ValueError("Decoder Object has not been set.")
         if not self.reward_calculator:
             raise ValueError("Reward Calculator has not been set.")
-        if not self.__reconstruction_optimizer or not self.__property_optimizer:
-            raise ValueError("Learning mode has not been set.")
+
+    def init_optimizers(self):
+        """
+        initialize the optimizers for encoder and decoder training
+        """
+        # init optimizers
+        self.__encoder_optimizer = torch.optim.Adam(list(self.encoder_agent.parameters()))
+        self.__decoder_optimizer = torch.optim.Adam(list(self.decoder_agent.parameters()))
+        self.__total_optimizer = torch.optim.Adam(
+            list(self.encoder_agent.parameters()) + list(self.decoder_agent.parameters()))
 
     ####################
     # training process #
     ####################
 
-    def train(self, epochs=100, plot_interval=50):
+    def train_model(self, epochs=100, plot_interval=50):
         """
         train the encoder to produce an embedding for the given dataset
         :param epochs: number of epochs to train for as int
@@ -119,69 +120,72 @@ class EmbeddingFramework:
         """
         # before running, check if everything is set up correctly
         self.check_completeness()
+        self.init_optimizers()
 
         # distance calculation for high dimensional data
         self.property_calculator.calculate_high_dim_property()
 
-        for epoch in tqdm(range(epochs), disable=self.disable_tqdm):
+        print(f"Starting training for {epochs} epochs")
+        for epoch in tqdm(range(epochs), disable=self.__disable_tqdm):
             # tell the sampler that a new epoch is starting
             self.sampler.reset_epoch()
 
             # run through epoch
             while not self.sampler.epoch_done:
-                self.run_iteration(epoch)
+                self.forward(epoch)
 
             # plot latent space
             if epoch % plot_interval == 0:
                 self.plot_latent(f"images/latent_{epoch}.png")
 
-    def run_iteration(self, epoch):
+    def forward(self, epoch):
         """
         run single iteration of training loop
         :param epoch: current training epoch
         """
         # get batch of points
-        ind = self.sampler.next_batch_indices()
-        x_a, _ = self.sampler.get_points_from_indices(ind)
-        x_a = x_a.to(self.__device)
+        sample_out = self.sampler(self.property_calculator.high_dim_property)
 
-        # pass through encoder
-        out = self.encoder_agent(x_a)
-        z_a = self.explorer.get_point_from_output(out, epoch)
+        # pass through encoder network
+        encoder_out = self.encoder_agent(sample_out)
 
-        # get complementary indices corresponding to p1
-        ind2 = self.sampler.next_complementary_indices(self.property_calculator)
-        property_loss = 0
-        if ind2 is not None:
-            # get points
-            x_a2, _ = self.sampler.get_points_from_indices(ind2)
-            x_a2 = x_a2.to(self.__device)
+        # choose action based on exploration
+        explorer_out = self.explorer(encoder_out, epoch)
 
-            # pass through encoder
-            z_a2 = self.encoder_agent(x_a2)
-            z_a2 = self.explorer.get_point_from_output(z_a2)
-
-            # compare high and low dims
-            low_dim_prop = self.property_calculator.get_low_dim_property(z_a, z_a2)
-            high_dim_prop = self.property_calculator.high_dim_property[ind, ind2].to(self.__device)
-            property_loss = -self.reward_calculator.calculate_property_reward(high_dim_prop, low_dim_prop)
+        # compute low and high dimensional properties
+        property_out = self.property_calculator(explorer_out)
 
         # communicate through transmission channel
-        z_b = self.transmitter.transmit(z_a)
+        transmitter_out = self.transmitter(explorer_out)
 
-        # pass through decoder
-        x_b = self.decoder_agent(z_b)
+        # pass through decoder network
+        decoder_out = self.decoder_agent(transmitter_out)
 
-        # compare original point and reconstructed point
-        reconstruction_loss = -self.reward_calculator.calculate_reconstruction_reward(x_a, x_b, out, self.explorer)
+        # get rewards / loss for training
+        encoder_reward, decoder_reward, t_reward = self.reward_calculator(sample_out, encoder_out, explorer_out,
+                                                                          property_out, transmitter_out, decoder_out)
+        encoder_loss = -encoder_reward
+        decoder_loss = -decoder_reward
+        total_loss = -t_reward
 
-        # train the encoder and decoder
-        total_loss = reconstruction_loss + property_loss
-        self.__reconstruction_optimizer.zero_grad()
-        self.__property_optimizer.zero_grad()
+        # TODO this is a temporary solution
+        total_loss += encoder_loss + decoder_loss
+
+        # TODO (how to train encoder exclusively and decoder exclusively)
+        # # train the encoder on encoder_loss
+        # self.__encoder_optimizer.zero_grad()
+        # encoder_loss.backward()
+        # self.__encoder_optimizer.step()
+        #
+        # # train decoder on decoder_loss
+        # self.__decoder_optimizer.zero_grad()
+        # decoder_loss.backward()
+        # self.__decoder_optimizer.step()
+
+        # jointly train encoder and decoder on total_loss
+        self.__total_optimizer.zero_grad()
         total_loss.backward()
-        self.__reconstruction_optimizer.step()
-        self.__property_optimizer.step()
+        self.__total_optimizer.step()
 
     #################
     # visualisation #
@@ -195,17 +199,22 @@ class EmbeddingFramework:
         """
         # init
         self.sampler.reset_epoch()
-        self.explorer.evaluation_active = True
+        self.eval()
 
         while not self.sampler.epoch_done:
             # get batch of points
-            ind = self.sampler.next_batch_indices()
-            x, y = self.sampler.get_points_from_indices(ind)
-            x = x.to(self.__device)
+            sample_out = self.sampler(self.property_calculator.high_dim_property)
+            p1 = sample_out
+            if type(p1[0]) is tuple:
+                p1 = p1[0]
+            _, y = p1
 
             # pass through encoder and get points
-            out = self.encoder_agent(x)
-            z = self.explorer.get_point_from_output(out)
+            encoder_out = self.encoder_agent(sample_out)
+            explorer_out = self.explorer(encoder_out, epoch=0)
+            z = explorer_out
+            if type(z) is tuple:
+                z = z[0]
             z = z.detach().to('cpu').numpy()
 
             # plot batch of points
@@ -219,5 +228,4 @@ class EmbeddingFramework:
         plt.close()
 
         # un-init
-        self.explorer.evaluation_active = False
-
+        self.train(True)
