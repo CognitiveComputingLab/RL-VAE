@@ -1,4 +1,5 @@
 import torch.nn as nn
+from rl_embeddings.components import Component
 
 
 class GeneralModel(nn.Module):
@@ -18,48 +19,59 @@ class GeneralModel(nn.Module):
         return x
 
 
-class EncoderSimple(nn.Module):
+class EncoderSimple(nn.Module, Component):
     def __init__(self, input_dim, latent_dim):
         super(EncoderSimple, self).__init__()
+        Component.__init__(self)
+        self._required_inputs = ["points"]
+
         # assuming each point has the same dimension as input_dim
         self.gm = GeneralModel(input_dim, [1024, 2048, 2048, 4096])
 
         # output layers for each point
         self.linear1 = nn.Linear(4096, latent_dim)
 
-    def forward(self, sample_out):
+    def forward(self, **kwargs):
         """
         pass point through general model
-        :param sample_out: only contains x
         """
+        # check required arguments
+        self.check_required_input(**kwargs)
+
         # sample out only contains x
-        x, _ = sample_out
+        x, _ = kwargs["points"]
 
         # pass through general model
         x = self.gm(x)
 
         # compute outputs for each point
         mu1 = self.linear1(x)
-        return mu1
+        return {"means": mu1}
 
 
-class EncoderTSNE(nn.Module):
+class EncoderTSNE(nn.Module, Component):
     def __init__(self, input_dim, latent_dim):
         super(EncoderTSNE, self).__init__()
+        Component.__init__(self)
+        self._required_inputs = ["points", "indices"]
+
         # assuming each point has the same dimension as input_dim
         self.gm = GeneralModel(input_dim, [1024, 2048, 2048, 4096])
 
         # output layers for each point
         self.linear1 = nn.Linear(4096, latent_dim)
 
-    def forward(self, sample_out):
+    def forward(self, **kwargs):
         """
         pass point through general model
-        :param sample_out: only contains x
+        return indices for later use
         """
-        # sample out only contains x
+        # check required arguments
+        self.check_required_input(**kwargs)
+
         # get regular points from sample_out
-        p1, ind1 = sample_out
+        p1 = kwargs["points"]
+        ind1 = kwargs["indices"]
         x, _ = p1
 
         # pass through general model
@@ -67,42 +79,65 @@ class EncoderTSNE(nn.Module):
 
         # compute outputs for each point
         mu1 = self.linear1(x)
-        return mu1, ind1
+        return {"means": mu1, "indices": ind1}
 
 
-class EncoderUMAP(EncoderSimple):
+class EncoderUMAP(nn.Module, Component):
     def __init__(self, input_dim, latent_dim):
         super().__init__(input_dim, latent_dim)
+        Component.__init__(self)
+        self._required_inputs = ["points", "indices", "complementary_points", "complementary_indices"]
 
-    def forward(self, sample_out):
+        # init network while assuming each point has the same dimension as input_dim
+        self.gm = GeneralModel(input_dim, [1024, 2048, 2048, 4096])
+
+        # output layers for each point
+        self.linear1 = nn.Linear(4096, latent_dim)
+
+    def forward(self, **kwargs):
         """
-        pass point through general model
-        :param sample_out: output of umap sampling, includes indices etc.
+        pass regular points and complementary through general model
+        pass indices as identity function for later use
         """
+        # check required arguments
+        self.check_required_input(**kwargs)
+
         # get regular points from sample_out
-        p1, p2, ind1, ind2 = sample_out
+        p1 = kwargs["points"]
+        p2 = kwargs["complementary_points"]
+        ind1 = kwargs["indices"]
+        ind2 = kwargs["complementary_indices"]
+
+        # get xs from points
+        x1, _ = p1
+        x2, _ = p2
 
         # pass regular and complementary points through network
-        mu1 = super().forward(p1)
-        mu2 = super().forward(p2)
+        mu1 = self.linear1(self.gm(x1))
+        mu2 = self.linear1(self.gm(x2))
 
-        return mu1, mu2, ind1, ind2
+        return {"means": mu1, "complementary_means": mu2, "indices": ind1, "complementary_indices": ind2}
 
 
-class EncoderVAE(nn.Module):
+class EncoderVAE(nn.Module, Component):
     def __init__(self, input_dim, latent_dims):
         super(EncoderVAE, self).__init__()
+        Component.__init__(self)
+        self._required_inputs = ["points"]
+
         self.gm = GeneralModel(input_dim, [1024, 2048, 2048, 4096])
         self.linearM = nn.Linear(4096, latent_dims)
         self.linearS = nn.Linear(4096, latent_dims)
 
-    def forward(self, sample_out):
+    def forward(self, **kwargs):
         """
         VAE model function
-        :param sample_out: sample out containing only the simple points
         """
+        # check required arguments
+        self.check_required_input(**kwargs)
+
         # get x from normal points
-        x, _ = sample_out
+        x, _ = kwargs["points"]
 
         # get distribution parameters
         x = self.gm(x)
@@ -110,12 +145,15 @@ class EncoderVAE(nn.Module):
         log_var = self.linearS(x)
 
         # return parameters, assuming gaussian
-        return mu, log_var
+        return {"means": mu, "log_vars": log_var}
 
 
-class EncoderKHeadVAE(nn.Module):
+class EncoderKHeadVAE(nn.Module, Component):
     def __init__(self, input_dim, latent_dims, k):
         super(EncoderKHeadVAE, self).__init__()
+        Component.__init__(self)
+        self._required_inputs = ["points"]
+
         self.k = k
         self.gm = GeneralModel(input_dim, [1024, 2048, 2048, 4096])
         self.linearM = nn.Linear(4096, k * latent_dims)
@@ -123,17 +161,20 @@ class EncoderKHeadVAE(nn.Module):
         self.weight_gm = GeneralModel(input_dim, [1024, 2048, 2048, 4096])
         self.linear_weight = nn.Linear(4096, k)
 
-    def forward(self, sample_out):
+    def forward(self, **kwargs):
         """
         compute k different VAE heads simultaneously
-        :param sample_out: only the points are needed
+        :param: only the points are needed
         :return: 3 tensors
             - mu: means for each head, shape: [batch_size, num_heads, low_dims]
             - logvar: logvars for each head, shape: [batch_size, num_heads, low_dims]
             - weights: weights that represent the predicted strength of embedding for each head
         """
+        # check required arguments
+        self.check_required_input(**kwargs)
+
         # get x from sample out
-        x, _ = sample_out
+        x, _ = kwargs["points"]
 
         # pass through general model
         x2 = self.gm(x)
@@ -152,4 +193,4 @@ class EncoderKHeadVAE(nn.Module):
         weights = self.linear_weight(weights)
         weights = nn.functional.softmax(weights, dim=1)
 
-        return mu, logvar, weights
+        return {"means": mu, "log_vars": logvar, "weights": weights}

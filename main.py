@@ -21,10 +21,21 @@ if __name__ == "__main__":
         shuffle=False
     )
 
-    embedding_framework = presets.preset_tsne(device, 3, 2, data_loader)
+    import rl_embeddings.samplers as samplers
+    import rl_embeddings.encoders as encoders
+    s = samplers.SamplerVAE(device, data_loader)
+    e = encoders.EncoderVAE(3, 2).to(device)
+
+    sample = s()
+    encoded = e(**sample)
+
+    print(encoded)
+
+
+    """embedding_framework = presets.preset_tsne(device, 3, 2, data_loader)
     embedding_framework.disable_tqdm = False
     embedding_framework.train_model(epochs=5, plot_interval=20)
-    embedding_framework.plot_latent(f"images/latent.png")
+    embedding_framework.plot_latent(f"images/latent.png")"""
 
     """
     TODO:
