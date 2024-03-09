@@ -2,30 +2,22 @@ import abc
 import torch
 import torch.nn as nn
 import torch.nn.functional as f
+from rl_embeddings.components import Component
 
 
-class RewardCalculator(nn.Module, abc.ABC):
+class RewardCalculator(nn.Module, Component, abc.ABC):
     def __init__(self, device):
         super().__init__()
+        Component.__init__(self)
         self._device = device
 
         # general trivial reward
         self._trivial_reward = torch.tensor(0., requires_grad=True).to(self._device)
 
     @abc.abstractmethod
-    def forward(self, s_o, enc_o, exp_o, p_o, tr_o, dec_o,) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def forward(self, **kwargs):
         """
         compute reward for encoder and decoder
-        :param s_o: direct output of Sampler object
-        :param enc_o: direct output of encoder agent
-        :param exp_o: direct output of Explorer object
-        :param p_o: direct output of PropertyCalculator object
-        :param tr_o: direct output of Transmitter object
-        :param dec_o: direct output of decoder agent
-        must return three torch tensors of shape [1] with gradients activated
-            - encoder reward: tensor for training the encoder
-            - decoder reward: tensor for training the decoder
-            - total reward : tensor for jointly training encoder and decoder
         """
         raise NotImplementedError
 
@@ -33,21 +25,26 @@ class RewardCalculator(nn.Module, abc.ABC):
 class RewardCalculatorVAE(RewardCalculator):
     def __init__(self, device):
         super().__init__(device)
+        self._required_inputs = ["means", "log_vars", "points", "decoded_points"]
 
         # hyperparameters
         self.success_weight = 1
         self.kl_weight = 1
 
-    def forward(self, s_o, enc_o, exp_o, p_o, tr_o, dec_o) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def forward(self, **kwargs):
         """
         compute reward for encoder and decoder
         a VAE only trains the encoder and decoder jointly
         therefore only the total_reward is non-trivial
         """
+        # check required arguments
+        self.check_required_input(**kwargs)
+
         # get information from different steps of embedding process
-        mu, log_var = enc_o
-        x_a, _ = s_o
-        x_b = dec_o
+        mu = kwargs["means"]
+        log_var = kwargs["log_vars"]
+        x_a, _ = kwargs["points"]
+        x_b = kwargs["decoded_points"]
 
         # KL term with prior as gaussian
         kl_divergence = 0.5 * torch.sum(-1 - log_var + mu.pow(2) + log_var.exp())
@@ -56,26 +53,33 @@ class RewardCalculatorVAE(RewardCalculator):
         total_loss = f.mse_loss(x_b, x_a, reduction='sum') * self.success_weight + kl_divergence * self.kl_weight
         total_reward = (-1) * total_loss
 
-        return self._trivial_reward, self._trivial_reward, total_reward
+        return {"total_reward": total_reward}
 
 
 class RewardCalculatorKHeadVAE(RewardCalculator):
     def __init__(self, device):
         super().__init__(device)
+        self._required_inputs = ["weights", "points", "decoded_points", "chosen_indices", "chosen_means",
+                                 "chosen_log_vars"]
 
         # hyperparameters
         self.success_weight = 1
 
-    def forward(self, s_o, enc_o, exp_o, p_o, tr_o, dec_o,) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def forward(self, **kwargs):
         """
         encoder and decoder are trained jointly
         reward also considers the weight of the chosen head
         """
+        # check required arguments
+        self.check_required_input(**kwargs)
+
         # get information from different steps of embedding process
-        x_a, _ = s_o
-        x_b = dec_o
-        mu, log_var, weight = enc_o
-        _, chosen_indices, chosen_mu, chosen_log_var = exp_o
+        weight = kwargs["weights"]
+        x_a, _ = kwargs["points"]
+        x_b = kwargs["decoded_points"]
+        chosen_indices = kwargs["chosen_indices"]
+        chosen_mu = kwargs["chosen_means"]
+        chosen_log_var = kwargs["chosen_log_vars"]
 
         # tensor for multiplying reward with probability
         mean_weights = weight.gather(1, chosen_indices.unsqueeze(1))
@@ -87,47 +91,27 @@ class RewardCalculatorKHeadVAE(RewardCalculator):
         total_loss = torch.sum((surprise + (success * self.success_weight)) * mean_weights)
         total_reward = (-1) * total_loss
 
-        return self._trivial_reward, self._trivial_reward, total_reward
+        return {"total_reward": total_reward}
 
 
 class RewardCalculatorUMAP(RewardCalculator):
     def __init__(self, device):
         super().__init__(device)
+        self._required_inputs = ["points", "decoded_points", "low_dim_prop", "high_dim_prop"]
 
-    def compute_encoder_reward(self, s_o, enc_o, exp_o, p_o, tr_o, dec_o):
-        # get information from different steps of embedding process
-        low_dim_prop, high_dim_prop = p_o
-        p1, _, _, _ = s_o
-        x_a, _ = p1
-        x_b = dec_o
-
-        # encoder reward based on properties
-        encoder_loss = f.binary_cross_entropy(low_dim_prop, high_dim_prop)
-        encoder_reward = (-1) * encoder_loss
-        return encoder_reward
-
-    def compute_decoder_reward(self, s_o, enc_o, exp_o, p_o, tr_o, dec_o):
-        # get information from different steps of embedding process
-        low_dim_prop, high_dim_prop = p_o
-        p1, _, _, _ = s_o
-        x_a, _ = p1
-        x_b = dec_o
-
-        # decoder reward based on reconstruction
-        decoder_loss = f.mse_loss(x_b, x_a, reduction='sum')
-        decoder_reward = (-1) * decoder_loss
-        return decoder_reward
-
-    def forward(self, s_o, enc_o, exp_o, p_o, tr_o, dec_o) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def forward(self, **kwargs):
         """
         encoder is trained on high- / low-dim property differences
         decoder is trained on reconstruction
         """
+        # check required arguments
+        self.check_required_input(**kwargs)
+
         # get information from different steps of embedding process
-        low_dim_prop, high_dim_prop = p_o
-        p1, _, _, _ = s_o
-        x_a, _ = p1
-        x_b = dec_o
+        x_a, _ = kwargs["points"]
+        x_b = kwargs["decoded_points"]
+        low_dim_prop = kwargs["low_dim_prop"]
+        high_dim_prop = kwargs["high_dim_prop"]
 
         # encoder reward based on properties
         encoder_loss = f.binary_cross_entropy(low_dim_prop, high_dim_prop)
@@ -137,40 +121,49 @@ class RewardCalculatorUMAP(RewardCalculator):
         decoder_loss = f.mse_loss(x_b, x_a, reduction='sum')
         decoder_reward = (-1) * decoder_loss
 
-        return encoder_reward, decoder_reward, self._trivial_reward
+        return {"encoder_reward": encoder_reward, "decoder_reward": decoder_reward}
 
 
 class RewardCalculatorVarianceVAE(RewardCalculator):
     def __init__(self, device):
         super().__init__(device)
+        self._required_inputs = ["points", "decoded_points"]
 
-    def forward(self, s_o, enc_o, exp_o, p_o, tr_o, dec_o,) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def forward(self, **kwargs):
         """
         train encoder and decoder jointly on only the reconstruction
         """
+        # check required arguments
+        self.check_required_input(**kwargs)
+
         # get information from different steps of embedding process
-        x_a, _ = s_o
-        x_b = dec_o
+        x_a, _ = kwargs["points"]
+        x_b = kwargs["decoded_points"]
 
         # reconstruction term
         total_loss = f.mse_loss(x_b, x_a, reduction='sum')
         total_reward = (-1) * total_loss
 
-        return self._trivial_reward, self._trivial_reward, total_reward
+        return {"total_reward": total_reward}
 
 
 class RewardCalculatorTSNE(RewardCalculator):
     def __init__(self, device):
         super().__init__(device)
+        self._required_inputs = ["low_dim_property", "high_dim_property"]
 
-    def forward(self, s_o, enc_o, exp_o, p_o, tr_o, dec_o,) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def forward(self, **kwargs):
         """
         the reward for TSNE is based on the KL-divergence between high and low dim distributions
         these distributions are given in the form of matrices (tensors)
         both matrices need to sum up to 1 as they represent probability distributions
         """
+        # check required arguments
+        self.check_required_input(**kwargs)
+
         # get information from different steps of embedding process
-        q, p = p_o
+        q = kwargs["low_dim_property"]
+        p = kwargs["high_dim_property"]
 
         # compute KL divergence loss
         """kl_divergence = p * (torch.log(p) - torch.log(q))

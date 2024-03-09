@@ -2,45 +2,39 @@ import abc
 import torch
 import torch.nn as nn
 from torch.nn.modules.module import T
+from rl_embeddings.components import Component
 
 
-class Explorer(nn.Module, abc.ABC):
+class Explorer(nn.Module, Component, abc.ABC):
     def __init__(self, device):
         super().__init__()
+        Component.__init__(self)
         self._device = device
 
     @abc.abstractmethod
-    def forward(self, encoder_out, epoch):
+    def forward(self, **kwargs):
         """
         get single point from neural network output
-        :param encoder_out:  directly from neural network component (encoder)
-        :param epoch: the current epoch as int, used for regulating exploration
         """
         raise NotImplementedError
-
-
-class ExplorerIdentity(Explorer):
-    def __init__(self, device):
-        super().__init__(device)
-
-    def forward(self, encoder_out, epoch):
-        """
-        identity function
-        """
-        return encoder_out
 
 
 class ExplorerVAE(Explorer):
     def __init__(self, device):
         super().__init__(device)
+        self._required_inputs = ["means", "log_vars"]
 
-    def forward(self, encoder_out, epoch):
+    def forward(self, **kwargs):
         """
         get single point from encoder output
         sample from the output distribution via the re-parameterization trick
         """
+        # check required arguments
+        self.check_required_input(**kwargs)
+
         # get distribution variables
-        mu, log_var = encoder_out
+        mu = kwargs["means"]
+        log_var = kwargs["log_vars"]
 
         # no exploration
         if not self.training:
@@ -53,12 +47,14 @@ class ExplorerVAE(Explorer):
         eps = torch.randn_like(std)
         # generate a sample
         sample = mu + std * eps
-        return sample
+
+        return {"sample": sample}
 
 
 class ExplorerKHeadVAE(Explorer):
     def __init__(self, device):
         super().__init__(device)
+        self._required_inputs = ["epoch", "means", "log_vars", "weights"]
 
         # hyperparameters
         self.min_epsilon = 0.1
@@ -92,17 +88,25 @@ class ExplorerKHeadVAE(Explorer):
         """
         return
 
-    def forward(self, encoder_out, epoch):
+    def forward(self, **kwargs):
         """
         get point from encoder output
         choose specific head based on weighted probabilities
         then pass mean and variance through re-parameterization to produce single point
         :return:
         """
+        # check required arguments
+        self.check_required_input(**kwargs)
+
+        # get info from input
+        epoch = kwargs["epoch"]
+        mu = kwargs["means"]
+        log_var = kwargs["log_vars"]
+        weight = kwargs["weights"]
+
         # init
         if epoch:
             self.exploration_function(epoch)
-        mu, log_var, weight = encoder_out
 
         batch_size, num_choices = weight.shape
 
@@ -129,7 +133,8 @@ class ExplorerKHeadVAE(Explorer):
         # generate a sample
         sample = chosen_mu + std * eps
 
-        return sample, chosen_indices, chosen_mu, chosen_log_var
+        return {"sample": sample, "chosen_indices": chosen_indices, "chosen_means": chosen_mu,
+                "chosen_log_vars": chosen_log_var}
 
 
 class ExplorerKHeadVAEDecreasing(ExplorerKHeadVAE):
@@ -154,6 +159,7 @@ class ExplorerKHeadVAEDecreasing(ExplorerKHeadVAE):
 class ExplorerVariance(Explorer):
     def __init__(self, device):
         super().__init__(device)
+        self._required_inputs = ["means"]
 
         # hyperparameters
         self.starting_exploration = 1
@@ -175,14 +181,19 @@ class ExplorerVariance(Explorer):
         """
         return
 
-    def forward(self, encoder_out, epoch):
+    def forward(self, **kwargs):
         """
         get single point from encoder output
         manually control log_var of output distribution and get mu from encoder
         sample from the distribution via the re-parameterization trick
         """
+        # check required arguments
+        self.check_required_input(**kwargs)
+
+        # get info from input
+        mu = kwargs["means"]
+
         # get distribution variables
-        mu = encoder_out
         log_var = torch.Tensor([[self.current_exploration] * mu.shape[1] for _ in range(mu.shape[0])]).to(self._device)
 
         # no exploration
@@ -197,7 +208,7 @@ class ExplorerVariance(Explorer):
         # generate a sample
         sample = mu + std * eps
 
-        return sample
+        return {"sample": sample}
 
 
 class ExplorerVarianceDecreasing(ExplorerVariance):
