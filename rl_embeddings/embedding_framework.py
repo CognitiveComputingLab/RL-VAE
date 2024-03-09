@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 import matplotlib.pyplot as plt
-from torch.nn.modules.module import T
 from tqdm import tqdm
 from rl_embeddings.property_calculators import PropertyCalculator
 from rl_embeddings.samplers import Sampler

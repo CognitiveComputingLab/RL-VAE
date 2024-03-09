@@ -261,7 +261,7 @@ class PropertyCalculatorTSNE(PropertyCalculator):
 
         # pairwise distances between points as matrix
         pwd = self.pairwise_distances(dataset.data)
-
+        
         # binary search for sigma values according to perplexity hyperparameter
         sigmas = self.find_sigmas(pwd)
 
