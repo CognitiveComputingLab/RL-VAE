@@ -41,3 +41,26 @@ class VAE(nn.Module):
         reward_out = self.reward(**concat)
 
         return reward_out, self.sampler.epoch_done
+
+
+class UMAP(nn.Module):
+    def __init__(self, input_dim, latent_dim, device, data_loader):
+        super(UMAP, self).__init__()
+
+        # components
+        self.property = property_calculators.PropertyCalculatorUMAP(device, data_loader)
+        self.sampler = samplers.SamplerUMAP(device, data_loader)
+        self.encoder = encoders.EncoderUMAP(input_dim, latent_dim).to(device)
+        self.reward = reward_calculators.RewardCalculatorUMAP(device)
+
+        # init high dim property
+        self.property.calculate_high_dim_property()
+
+    def forward(self, epoch=0):
+        sampler_out = self.sampler(**{"high_dim_properties": self.property.high_dim_property})
+        encoder_out = self.encoder(**sampler_out)
+        property_out = self.property(**encoder_out)
+        concat = merge_dicts(sampler_out, encoder_out, property_out)
+        reward_out = self.reward(**concat)
+
+        return reward_out, self.sampler.epoch_done

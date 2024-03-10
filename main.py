@@ -37,8 +37,8 @@ if __name__ == "__main__":
         shuffle=False
     )
 
-    model = examples.VAE(3, 2, device, data_loader)
-    train(model, epochs=5)
+    model = examples.UMAP(3, 2, device, data_loader)
+    train(model, epochs=5, reward_name="encoder_reward")
 
 
 

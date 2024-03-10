@@ -84,7 +84,7 @@ class EncoderTSNE(nn.Module, Component):
 
 class EncoderUMAP(nn.Module, Component):
     def __init__(self, input_dim, latent_dim):
-        super().__init__(input_dim, latent_dim)
+        super(EncoderUMAP, self).__init__()
         Component.__init__(self)
         self._required_inputs = ["points", "indices", "complementary_points", "complementary_indices"]
 

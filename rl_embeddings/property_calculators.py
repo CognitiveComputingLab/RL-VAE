@@ -66,7 +66,7 @@ class PropertyCalculatorUMAP(PropertyCalculator):
     # some code adapted from https://towardsdatascience.com/how-to-program-umap-from-scratch-e6eff67f55fe
     def __init__(self, device, data_loader):
         super().__init__(device, data_loader)
-        self._required_inputs = ["points", "complementary_points", "indices", "complementary_indices"]
+        self._required_inputs = ["means", "complementary_means", "indices", "complementary_indices"]
 
         # umap specific
         self.__symmetric_probabilities = None
@@ -94,8 +94,8 @@ class PropertyCalculatorUMAP(PropertyCalculator):
         self.check_required_input(**kwargs)
 
         # get points from exploration
-        p1 = kwargs["points"]
-        p2 = kwargs["complementary_points"]
+        p1 = kwargs["means"]
+        p2 = kwargs["complementary_means"]
         ind1 = kwargs["indices"]
         ind2 = kwargs["complementary_indices"]
 

@@ -97,7 +97,7 @@ class RewardCalculatorKHeadVAE(RewardCalculator):
 class RewardCalculatorUMAP(RewardCalculator):
     def __init__(self, device):
         super().__init__(device)
-        self._required_inputs = ["points", "decoded_points", "low_dim_prop", "high_dim_prop"]
+        self._required_inputs = ["low_dim_property", "high_dim_property"]
 
     def forward(self, **kwargs):
         """
@@ -108,20 +108,14 @@ class RewardCalculatorUMAP(RewardCalculator):
         self.check_required_input(**kwargs)
 
         # get information from different steps of embedding process
-        x_a, _ = kwargs["points"]
-        x_b = kwargs["decoded_points"]
-        low_dim_prop = kwargs["low_dim_prop"]
-        high_dim_prop = kwargs["high_dim_prop"]
+        low_dim_prop = kwargs["low_dim_property"]
+        high_dim_prop = kwargs["high_dim_property"]
 
         # encoder reward based on properties
         encoder_loss = f.binary_cross_entropy(low_dim_prop, high_dim_prop)
         encoder_reward = (-1) * encoder_loss
 
-        # decoder reward based on reconstruction
-        decoder_loss = f.mse_loss(x_b, x_a, reduction='sum')
-        decoder_reward = (-1) * decoder_loss
-
-        return {"encoder_reward": encoder_reward, "decoder_reward": decoder_reward}
+        return {"encoder_reward": encoder_reward}
 
 
 class RewardCalculatorVarianceVAE(RewardCalculator):
