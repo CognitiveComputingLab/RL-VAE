@@ -1,30 +1,31 @@
 import torch.nn as nn
 from rl_embeddings.encoders import GeneralModel
+from rl_embeddings.components import Component
 
 
-class DecoderSimple(nn.Module):
+class DecoderSimple(nn.Module, Component):
     def __init__(self, input_dim, latent_dims):
         super(DecoderSimple, self).__init__()
+        Component.__init__(self)
+        self._required_inputs = ["encoded_points"]
+
         self.gm = GeneralModel(latent_dims, [512, 1024, 2024, 4096])
         self.linear = nn.Linear(4096, input_dim)
 
-    def forward(self, transmitter_out):
+    def forward(self, **kwargs):
         """
-        take an input point
-        :param transmitter_out: directly take input from transmitter output
-            - can be structured in different ways
-            - single point tensor
-            - tuple
-                -> first element in tuple will be taken as point tensor
+        pass input through decoder pytorch network
         :return: decoded point tensor
         """
-        z = transmitter_out
-        if type(z) is tuple:
-            z = transmitter_out[0]
+        # check required arguments
+        self.check_required_input(**kwargs)
+
+        # get information from arguments
+        z = kwargs["encoded_points"]
 
         # pass through model
         z = self.gm(z)
         z = self.linear(z)
 
         # output decoded point tensor
-        return z
+        return {"decoded_points": z}

@@ -1,11 +1,13 @@
+import abc
 import torch
 import torch.nn as nn
-import abc
+from rl_embeddings.components import Component
 
 
-class Sampler(nn.Module, abc.ABC):
+class Sampler(nn.Module, Component, abc.ABC):
     def __init__(self, device, data_loader):
-        super().__init__()
+        super(Sampler, self).__init__()
+        Component.__init__(self)
 
         self._device = device
         self._data_loader = data_loader
@@ -35,11 +37,10 @@ class Sampler(nn.Module, abc.ABC):
         return points, colours
 
     @abc.abstractmethod
-    def forward(self, high_dim_properties):
+    def forward(self, **kwargs):
         """
         sample all points to train the embedding model
         includes regular and complementary points (if needed)
-        :param high_dim_properties: high dimensional property matrix as calculated by PropertyCalculator object
         """
         raise NotImplementedError
 
@@ -69,7 +70,7 @@ class SamplerVAE(Sampler):
         # remove first dimension from tensor
         return indices_tensor.squeeze(0)
 
-    def forward(self, high_dim_properties):
+    def forward(self, **kwargs):
         """
         get next batch of points by naively looping through the dataset
         gets the indices first but only returns the actual points
@@ -77,56 +78,22 @@ class SamplerVAE(Sampler):
             - point coordinates, shape: [batch_size, high_dim]
             - colours of points, shape: [batch_size, 3]
         """
+        # check required arguments
+        self.check_required_input(**kwargs)
+
         # get indices of batch
         indices_tensor = self.get_batch_indices()
 
         # get actual points
         points = self.get_points_from_indices(indices_tensor)
 
-        return points
-
-
-class SamplerTSNE(SamplerVAE):
-    def __init__(self, device, data_loader):
-        super().__init__(device, data_loader)
-
-    def forward(self, high_dim_properties):
-        # get indices of batch
-        indices_tensor = self.get_batch_indices()
-
-        # get actual points
-        points = self.get_points_from_indices(indices_tensor)
-
-        return points, indices_tensor
+        return {"points": points, "indices": indices_tensor}
 
 
 class SamplerUMAP(SamplerVAE):
     def __init__(self, device, data_loader):
         super().__init__(device, data_loader)
-
-    def forward(self, high_dim_properties):
-        """
-        get indices of next batch of points by naively looping through the dataset
-        additionally get complementary points
-        :return: 4 tensors
-            - p1: tuple of two pytorch tensors (coordinates, colours) for normal points
-            - p2: tuple of two pytorch tensors (coordinates, colours) for complementary points
-            - ind1: normal point indices tensor, shape: [batch_size]
-            - ind2: complementary point indices tensor, shape: [batch_size]
-        """
-        # normal point indices
-        ind1 = self.get_batch_indices()
-
-        # normal points
-        p1 = self.get_points_from_indices(ind1)
-
-        # complementary point indices
-        ind2 = self.next_complementary_indices(high_dim_properties)
-
-        # complementary points
-        p2 = self.get_points_from_indices(ind2)
-
-        return p1, p2, ind1, ind2
+        self._required_inputs = ["high_dim_property"]
 
     def next_complementary_indices(self, high_dim_properties):
         """
@@ -161,3 +128,32 @@ class SamplerUMAP(SamplerVAE):
 
         complementary_indices = torch.stack(complementary_indices).squeeze(1)
         return complementary_indices
+
+    def forward(self, **kwargs):
+        """
+        get indices of next batch of points by naively looping through the dataset
+        additionally get complementary points
+        :return: 4 tensors
+            - p1: tuple of two pytorch tensors (coordinates, colours) for normal points
+            - p2: tuple of two pytorch tensors (coordinates, colours) for complementary points
+            - ind1: normal point indices tensor, shape: [batch_size]
+            - ind2: complementary point indices tensor, shape: [batch_size]
+        """
+        # check required arguments
+        self.check_required_input(**kwargs)
+
+        # normal point indices
+        ind1 = self.get_batch_indices()
+
+        # normal points
+        p1 = self.get_points_from_indices(ind1)
+
+        # complementary point indices
+        ind2 = self.next_complementary_indices(kwargs["high_dim_property"])
+
+        # complementary points
+        p2 = self.get_points_from_indices(ind2)
+
+        # convert to keyword arguments
+        kwargs = {"points": p1, "indices": ind1, "complementary_points": p2, "complementary_indices": ind2}
+        return kwargs

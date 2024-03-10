@@ -5,11 +5,13 @@ import numpy as np
 from scipy import optimize
 from tqdm import tqdm
 from sklearn.metrics.pairwise import euclidean_distances
+from rl_embeddings.components import Component
 
 
-class PropertyCalculator(nn.Module, abc.ABC):
+class PropertyCalculator(nn.Module, Component, abc.ABC):
     def __init__(self, device, data_loader):
         super().__init__()
+        Component.__init__(self)
 
         self._device = device
         self.__disable_tqdm = False
@@ -52,7 +54,7 @@ class PropertyCalculator(nn.Module, abc.ABC):
     ###################################
 
     @abc.abstractmethod
-    def forward(self, explorer_out):
+    def forward(self, **kwargs):
         """
         compute properties to calculate
         :return: low and high dimensional properties according to the explorer output
@@ -60,28 +62,12 @@ class PropertyCalculator(nn.Module, abc.ABC):
         raise NotImplementedError
 
 
-class PropertyCalculatorNone(PropertyCalculator):
-    def __init__(self, device, data_loader):
-        super().__init__(device, data_loader)
-
-    @property
-    def high_dim_property(self):
-        return
-
-    def symmetrize(self, prob, n):
-        return
-
-    def calculate_high_dim_property(self):
-        return
-
-    def forward(self, explorer_out):
-        return
-
-
 class PropertyCalculatorUMAP(PropertyCalculator):
     # some code adapted from https://towardsdatascience.com/how-to-program-umap-from-scratch-e6eff67f55fe
     def __init__(self, device, data_loader):
         super().__init__(device, data_loader)
+        self._required_inputs = ["encoded_points", "encoded_complementary_points", "indices", "complementary_indices"]
+
         # umap specific
         self.__symmetric_probabilities = None
 
@@ -95,7 +81,7 @@ class PropertyCalculatorUMAP(PropertyCalculator):
     # pytorch module forward #
     ##########################
 
-    def forward(self, explorer_out):
+    def forward(self, **kwargs):
         """
         get low and high dimensional properties as defined in the UMAP paper
         high dimensional property should already be calculated, needs to be retrieved for explorer_out
@@ -104,14 +90,20 @@ class PropertyCalculatorUMAP(PropertyCalculator):
             - low dimensional properties
             - high dimensional properties
         """
+        # check required arguments
+        self.check_required_input(**kwargs)
+
         # get points from exploration
-        p1, p2, ind1, ind2 = explorer_out
+        p1 = kwargs["encoded_points"]
+        p2 = kwargs["encoded_complementary_points"]
+        ind1 = kwargs["indices"]
+        ind2 = kwargs["complementary_indices"]
 
         # get properties
         low_dim_property = self.get_low_dim_property(p1, p2)
         high_dim_property = self.high_dim_property[ind1, ind2].float().to(self._device)
 
-        return low_dim_property, high_dim_property
+        return {"low_dim_property": low_dim_property, "high_dim_property": high_dim_property}
 
     ##############################################
     # overwriting property calculation functions #
@@ -237,6 +229,9 @@ class PropertyCalculatorTSNE(PropertyCalculator):
     # some code adapted from https://towardsdatascience.com/understanding-t-sne-by-implementing-2baf3a987ab3
     def __init__(self, device, data_loader):
         super().__init__(device, data_loader)
+        self._required_inputs = ["points", "indices"]
+
+        # init
         self.__symmetric_probabilities = None
 
         # hyperparameters
@@ -279,17 +274,21 @@ class PropertyCalculatorTSNE(PropertyCalculator):
         nom.fill_diagonal_(0)
         return nom / torch.sum(torch.sum(nom))
 
-    def forward(self, explorer_out):
+    def forward(self, **kwargs):
         """
         get low and high dimensional properties as defined in the TSNE paper
         high dimensional property should already be calculated, needs to be retrieved for explorer_out
         low dimensional property is calculated based on distributions with hyperparameters of high dim
-        :return: tuple of tensors
+        :return:
             - low dimensional properties
             - high dimensional properties
         """
+        # check required arguments
+        self.check_required_input(**kwargs)
+
         # get points from exploration
-        p1, ind1 = explorer_out
+        p1 = kwargs["points"]
+        ind1 = kwargs["indices"]
 
         # low dim distances
         low_dist = self.get_low_dim_property(p1)
@@ -304,7 +303,7 @@ class PropertyCalculatorTSNE(PropertyCalculator):
         high_symmetric_distances = torch.tensor(high_symmetric_distances).float().to(self._device)
         high_symmetric_distances.fill_diagonal_(0)
 
-        return low_dist, high_symmetric_distances
+        return {"low_dim_property": low_dist, "high_dim_property": high_symmetric_distances}
 
     ##########################
     # T-SNE helper functions #
