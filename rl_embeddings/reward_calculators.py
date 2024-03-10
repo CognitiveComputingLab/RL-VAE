@@ -175,4 +175,4 @@ class RewardCalculatorTSNE(RewardCalculator):
         mse = f.mse_loss(p, q, reduction='mean')
         mse_reward = (-1) * mse
 
-        return mse_reward, self._trivial_reward, self._trivial_reward
+        return {"encoder_reward": mse_reward}
