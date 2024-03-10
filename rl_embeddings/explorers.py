@@ -38,7 +38,7 @@ class ExplorerVAE(Explorer):
 
         # no exploration
         if not self.training:
-            return mu
+            return {"sample": mu}
 
         # re-parameterization trick
         # compute the standard deviation
