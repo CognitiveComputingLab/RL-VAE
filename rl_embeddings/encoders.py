@@ -46,47 +46,14 @@ class EncoderSimple(nn.Module, Component):
 
         # compute outputs for each point
         mu1 = self.linear1(x)
-        return {"means": mu1}
-
-
-class EncoderTSNE(nn.Module, Component):
-    def __init__(self, input_dim, latent_dim):
-        super(EncoderTSNE, self).__init__()
-        Component.__init__(self)
-        self._required_inputs = ["points", "indices"]
-
-        # assuming each point has the same dimension as input_dim
-        self.gm = GeneralModel(input_dim, [1024, 2048, 2048, 4096])
-
-        # output layers for each point
-        self.linear1 = nn.Linear(4096, latent_dim)
-
-    def forward(self, **kwargs):
-        """
-        pass point through general model
-        return indices for later use
-        """
-        # check required arguments
-        self.check_required_input(**kwargs)
-
-        # get regular points from sample_out
-        p1 = kwargs["points"]
-        ind1 = kwargs["indices"]
-        x, _ = p1
-
-        # pass through general model
-        x = self.gm(x)
-
-        # compute outputs for each point
-        mu1 = self.linear1(x)
-        return {"means": mu1, "indices": ind1}
+        return {"encoded_points": mu1}
 
 
 class EncoderUMAP(nn.Module, Component):
     def __init__(self, input_dim, latent_dim):
         super(EncoderUMAP, self).__init__()
         Component.__init__(self)
-        self._required_inputs = ["points", "indices", "complementary_points", "complementary_indices"]
+        self._required_inputs = ["points", "complementary_points"]
 
         # init network while assuming each point has the same dimension as input_dim
         self.gm = GeneralModel(input_dim, [1024, 2048, 2048, 4096])
@@ -105,8 +72,6 @@ class EncoderUMAP(nn.Module, Component):
         # get regular points from sample_out
         p1 = kwargs["points"]
         p2 = kwargs["complementary_points"]
-        ind1 = kwargs["indices"]
-        ind2 = kwargs["complementary_indices"]
 
         # get xs from points
         x1, _ = p1
@@ -116,7 +81,7 @@ class EncoderUMAP(nn.Module, Component):
         mu1 = self.linear1(self.gm(x1))
         mu2 = self.linear1(self.gm(x2))
 
-        return {"means": mu1, "complementary_means": mu2, "indices": ind1, "complementary_indices": ind2}
+        return {"encoded_points": mu1, "encoded_complementary_points": mu2}
 
 
 class EncoderVAE(nn.Module, Component):
@@ -193,4 +158,4 @@ class EncoderKHeadVAE(nn.Module, Component):
         weights = self.linear_weight(weights)
         weights = nn.functional.softmax(weights, dim=1)
 
-        return {"means": mu, "log_vars": logvar, "weights": weights}
+        return {"head_means": mu, "head_log_vars": logvar, "head_weights": weights}

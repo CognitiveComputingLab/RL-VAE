@@ -38,7 +38,7 @@ class ExplorerVAE(Explorer):
 
         # no exploration
         if not self.training:
-            return {"sample": mu}
+            return {"encoded_points": mu}
 
         # re-parameterization trick
         # compute the standard deviation
@@ -48,13 +48,13 @@ class ExplorerVAE(Explorer):
         # generate a sample
         sample = mu + std * eps
 
-        return {"sample": sample}
+        return {"encoded_points": sample}
 
 
 class ExplorerKHeadVAE(Explorer):
     def __init__(self, device):
         super().__init__(device)
-        self._required_inputs = ["epoch", "means", "log_vars", "weights"]
+        self._required_inputs = ["epoch", "head_means", "head_log_vars", "head_weights"]
 
         # hyperparameters
         self.min_epsilon = 0.1
@@ -100,9 +100,9 @@ class ExplorerKHeadVAE(Explorer):
 
         # get info from input
         epoch = kwargs["epoch"]
-        mu = kwargs["means"]
-        log_var = kwargs["log_vars"]
-        weight = kwargs["weights"]
+        mu = kwargs["head_means"]
+        log_var = kwargs["head_log_vars"]
+        weight = kwargs["head_weights"]
 
         # init
         if epoch:
@@ -133,7 +133,7 @@ class ExplorerKHeadVAE(Explorer):
         # generate a sample
         sample = chosen_mu + std * eps
 
-        return {"sample": sample, "chosen_indices": chosen_indices, "chosen_means": chosen_mu,
+        return {"encoded_points": sample, "chosen_indices": chosen_indices, "chosen_means": chosen_mu,
                 "chosen_log_vars": chosen_log_var}
 
 
@@ -159,7 +159,7 @@ class ExplorerKHeadVAEDecreasing(ExplorerKHeadVAE):
 class ExplorerVariance(Explorer):
     def __init__(self, device):
         super().__init__(device)
-        self._required_inputs = ["means"]
+        self._required_inputs = ["encoded_points"]
 
         # hyperparameters
         self.starting_exploration = 1
@@ -191,14 +191,14 @@ class ExplorerVariance(Explorer):
         self.check_required_input(**kwargs)
 
         # get info from input
-        mu = kwargs["means"]
+        mu = kwargs["encoded_points"]
 
         # get distribution variables
         log_var = torch.Tensor([[self.current_exploration] * mu.shape[1] for _ in range(mu.shape[0])]).to(self._device)
 
         # no exploration
         if not self.training:
-            return mu
+            return {"encoded_points": mu}
 
         # re-parameterization trick
         # compute the standard deviation
@@ -208,7 +208,7 @@ class ExplorerVariance(Explorer):
         # generate a sample
         sample = mu + std * eps
 
-        return {"sample": sample}
+        return {"encoded_points": sample, "log_vars": log_var, "means": mu}
 
 
 class ExplorerVarianceDecreasing(ExplorerVariance):

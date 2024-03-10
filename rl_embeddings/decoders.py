@@ -7,7 +7,7 @@ class DecoderSimple(nn.Module, Component):
     def __init__(self, input_dim, latent_dims):
         super(DecoderSimple, self).__init__()
         Component.__init__(self)
-        self._required_inputs = ["sample"]
+        self._required_inputs = ["encoded_points"]
 
         self.gm = GeneralModel(latent_dims, [512, 1024, 2024, 4096])
         self.linear = nn.Linear(4096, input_dim)
@@ -21,7 +21,7 @@ class DecoderSimple(nn.Module, Component):
         self.check_required_input(**kwargs)
 
         # get information from arguments
-        z = kwargs["sample"]
+        z = kwargs["encoded_points"]
 
         # pass through model
         z = self.gm(z)

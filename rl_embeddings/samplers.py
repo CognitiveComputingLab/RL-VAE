@@ -87,32 +87,13 @@ class SamplerVAE(Sampler):
         # get actual points
         points = self.get_points_from_indices(indices_tensor)
 
-        return {"points": points}
-
-
-class SamplerTSNE(SamplerVAE):
-    def __init__(self, device, data_loader):
-        super().__init__(device, data_loader)
-
-    def forward(self, **kwargs):
-        # check required arguments
-        self.check_required_input(**kwargs)
-
-        # get indices of batch
-        indices_tensor = self.get_batch_indices()
-
-        # get actual points
-        points = self.get_points_from_indices(indices_tensor)
-
-        # convert to keyword arguments
-        kwargs = {"points": points, "indices": indices_tensor}
-        return kwargs
+        return {"points": points, "indices": indices_tensor}
 
 
 class SamplerUMAP(SamplerVAE):
     def __init__(self, device, data_loader):
         super().__init__(device, data_loader)
-        self._required_inputs = ["high_dim_properties"]
+        self._required_inputs = ["high_dim_property"]
 
     def next_complementary_indices(self, high_dim_properties):
         """
@@ -168,7 +149,7 @@ class SamplerUMAP(SamplerVAE):
         p1 = self.get_points_from_indices(ind1)
 
         # complementary point indices
-        ind2 = self.next_complementary_indices(kwargs["high_dim_properties"])
+        ind2 = self.next_complementary_indices(kwargs["high_dim_property"])
 
         # complementary points
         p2 = self.get_points_from_indices(ind2)

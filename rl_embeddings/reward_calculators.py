@@ -59,7 +59,7 @@ class RewardCalculatorVAE(RewardCalculator):
 class RewardCalculatorKHeadVAE(RewardCalculator):
     def __init__(self, device):
         super().__init__(device)
-        self._required_inputs = ["weights", "points", "decoded_points", "chosen_indices", "chosen_means",
+        self._required_inputs = ["head_weights", "points", "decoded_points", "chosen_indices", "chosen_means",
                                  "chosen_log_vars"]
 
         # hyperparameters
@@ -74,7 +74,7 @@ class RewardCalculatorKHeadVAE(RewardCalculator):
         self.check_required_input(**kwargs)
 
         # get information from different steps of embedding process
-        weight = kwargs["weights"]
+        weight = kwargs["head_weights"]
         x_a, _ = kwargs["points"]
         x_b = kwargs["decoded_points"]
         chosen_indices = kwargs["chosen_indices"]
@@ -116,29 +116,6 @@ class RewardCalculatorUMAP(RewardCalculator):
         encoder_reward = (-1) * encoder_loss
 
         return {"encoder_reward": encoder_reward}
-
-
-class RewardCalculatorVarianceVAE(RewardCalculator):
-    def __init__(self, device):
-        super().__init__(device)
-        self._required_inputs = ["points", "decoded_points"]
-
-    def forward(self, **kwargs):
-        """
-        train encoder and decoder jointly on only the reconstruction
-        """
-        # check required arguments
-        self.check_required_input(**kwargs)
-
-        # get information from different steps of embedding process
-        x_a, _ = kwargs["points"]
-        x_b = kwargs["decoded_points"]
-
-        # reconstruction term
-        total_loss = f.mse_loss(x_b, x_a, reduction='sum')
-        total_reward = (-1) * total_loss
-
-        return {"total_reward": total_reward}
 
 
 class RewardCalculatorTSNE(RewardCalculator):

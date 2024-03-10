@@ -7,7 +7,6 @@ import rl_embeddings.explorers as explorers
 import rl_embeddings.transmitters as transmitters
 import rl_embeddings.decoders as decoders
 import rl_embeddings.reward_calculators as reward_calculators
-from rl_embeddings.embedding_framework import EmbeddingFramework
 
 
 def merge_dicts(*dicts):
@@ -57,10 +56,9 @@ class UMAP(nn.Module):
         self.property.calculate_high_dim_property()
 
     def forward(self, epoch=0):
-        sampler_out = self.sampler(**{"high_dim_properties": self.property.high_dim_property})
+        sampler_out = self.sampler(**{"high_dim_property": self.property.high_dim_property})
         encoder_out = self.encoder(**sampler_out)
-        property_out = self.property(**encoder_out)
-        concat = merge_dicts(sampler_out, encoder_out, property_out)
-        reward_out = self.reward(**concat)
+        property_out = self.property(**merge_dicts(sampler_out, encoder_out))
+        reward_out = self.reward(**merge_dicts(sampler_out, encoder_out, property_out))
 
         return reward_out, self.sampler.epoch_done
