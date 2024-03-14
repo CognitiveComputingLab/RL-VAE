@@ -19,7 +19,7 @@ def train(emb_model, epochs, reward_name="total_reward"):
         # run through epoch
         epoch_done = False
         while not epoch_done:
-            reward, epoch_done = emb_model.forward(epoch)
+            reward, epoch_done = emb_model(epoch)
             loss = -reward[reward_name]
 
             optimizer.zero_grad()
@@ -46,6 +46,7 @@ def plot_latent(emb_model, path):
         # pass through encoder and get points
         out = emb_model.encoder(**sample_out)
         if hasattr(emb_model, 'explorer'):
+            out["epoch"] = 0
             out = emb_model.explorer(**out)
         z = out["encoded_points"]
         z = z.detach().to('cpu').numpy()
@@ -75,7 +76,18 @@ if __name__ == "__main__":
         shuffle=False
     )
 
-    model = examples.UMAP(3, 2, device, data_loader)
+    # model = examples.UMAP(3, 2, device, data_loader)
     # model = examples.VAE(3, 2, device, data_loader)
-    train(model, epochs=11, reward_name="encoder_reward")
+    # model = examples.TSNE(3, 2, device, data_loader)
+    # model = examples.KHeadVAE(3, 2, device, data_loader, k=5)
+    model = examples.KHeadVAEDecreasing(3, 2, device, data_loader, k=5)
+    # model = examples.VarianceVAE(3, 2, device, data_loader)
+
+    train(model, epochs=51, reward_name="total_reward")
+
+    """
+    TODO
+    - fix TSNE
+    """
+
 

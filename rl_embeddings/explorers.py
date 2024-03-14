@@ -159,7 +159,7 @@ class ExplorerKHeadVAEDecreasing(ExplorerKHeadVAE):
 class ExplorerVariance(Explorer):
     def __init__(self, device):
         super().__init__(device)
-        self._required_inputs = ["encoded_points"]
+        self._required_inputs = ["encoded_points", "epoch"]
 
         # hyperparameters
         self.starting_exploration = 1
@@ -192,6 +192,7 @@ class ExplorerVariance(Explorer):
 
         # get info from input
         mu = kwargs["encoded_points"]
+        epoch = kwargs["epoch"]
 
         # get distribution variables
         log_var = torch.Tensor([[self.current_exploration] * mu.shape[1] for _ in range(mu.shape[0])]).to(self._device)
@@ -199,6 +200,9 @@ class ExplorerVariance(Explorer):
         # no exploration
         if not self.training:
             return {"encoded_points": mu}
+
+        # change exploration
+        self.exploration_function(epoch)
 
         # re-parameterization trick
         # compute the standard deviation

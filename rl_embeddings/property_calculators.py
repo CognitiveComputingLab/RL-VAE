@@ -287,7 +287,7 @@ class PropertyCalculatorTSNE(PropertyCalculator):
         self.check_required_input(**kwargs)
 
         # get points from exploration
-        p1 = kwargs["points"]
+        p1, _ = kwargs["points"]
         ind1 = kwargs["indices"]
 
         # low dim distances
@@ -299,8 +299,8 @@ class PropertyCalculatorTSNE(PropertyCalculator):
         high_dist = high_dist / high_dist.sum(axis=1).reshape([-1, 1])
         # make distances symmetric
         high_symmetric_distances = self.symmetrize(high_dist, len(ind1))
-        # convert to tensor, do not need any grad
-        high_symmetric_distances = torch.tensor(high_symmetric_distances).float().to(self._device)
+        # convert to tensor, do not need any grad before this point
+        high_symmetric_distances = torch.tensor(high_symmetric_distances, requires_grad=True).float().to(self._device)
         high_symmetric_distances.fill_diagonal_(0)
 
         return {"low_dim_property": low_dist, "high_dim_property": high_symmetric_distances}
