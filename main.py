@@ -26,7 +26,7 @@ def train(emb_model, epochs, reward_name="total_reward"):
             loss.backward()
             optimizer.step()
 
-        if epoch % 10 == 0:
+        if epoch % 1 == 0:
             plot_latent(emb_model, f"images/latent-{epoch}.png")
 
 
@@ -68,26 +68,20 @@ def plot_latent(emb_model, path):
 if __name__ == "__main__":
     device = get_device()
 
-    toy_data = data.Sphere3D(n=1000).generate()
+    toy_data = data.Sphere3D(n=10000).generate()
     toy_dataset = helper.ToyTorchDataset(toy_data)
     data_loader = torch.utils.data.DataLoader(
         toy_dataset,
-        batch_size=100,
+        batch_size=1000,
         shuffle=False
     )
 
     # model = examples.UMAP(3, 2, device, data_loader)
     # model = examples.VAE(3, 2, device, data_loader)
-    # model = examples.TSNE(3, 2, device, data_loader)
+    model = examples.TSNE(3, 2, device, data_loader)
     # model = examples.KHeadVAE(3, 2, device, data_loader, k=5)
-    model = examples.KHeadVAEDecreasing(3, 2, device, data_loader, k=5)
+    # model = examples.KHeadVAEDecreasing(3, 2, device, data_loader, k=5)
     # model = examples.VarianceVAE(3, 2, device, data_loader)
 
-    train(model, epochs=51, reward_name="total_reward")
-
-    """
-    TODO
-    - fix TSNE
-    """
-
+    train(model, epochs=10, reward_name="encoder_reward")
 

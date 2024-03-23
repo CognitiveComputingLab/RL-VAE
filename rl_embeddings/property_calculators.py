@@ -229,20 +229,21 @@ class PropertyCalculatorTSNE(PropertyCalculator):
     # some code adapted from https://towardsdatascience.com/understanding-t-sne-by-implementing-2baf3a987ab3
     def __init__(self, device, data_loader):
         super().__init__(device, data_loader)
-        self._required_inputs = ["points", "indices"]
+        self._required_inputs = ["encoded_points", "indices"]
 
         # init
         self.__symmetric_probabilities = None
 
         # hyperparameters
-        self.perplexity = 15
+        self.perplexity = 3
 
     @property
     def high_dim_property(self):
         return self.__symmetric_probabilities
 
     def symmetrize(self, prob, n):
-        return (prob + prob.T) / (2. * n)
+        sym_prob = (prob + prob.t()) / (2.0 * n)
+        return sym_prob
 
     def calculate_high_dim_property(self):
         """
@@ -252,16 +253,16 @@ class PropertyCalculatorTSNE(PropertyCalculator):
         """
         # recover real dataset from data loader
         dataset = self._data_loader.dataset
-        n = dataset.data.shape[0]
+        dataset_tensor = torch.tensor(dataset.data, requires_grad=False).float().to(self._device)
 
         # pairwise distances between points as matrix
-        pwd = self.pairwise_distances(dataset.data)
-        
+        pwd = self.pairwise_distances_torch(dataset_tensor)
+
         # binary search for sigma values according to perplexity hyperparameter
         sigmas = self.find_sigmas(pwd)
 
         # get conditional pairwise distances
-        c_pwd = self.p_conditional(pwd, sigmas)
+        c_pwd = self.p_conditional(pwd, sigmas, normalize=False)
 
         self.__symmetric_probabilities = c_pwd
 
@@ -271,8 +272,8 @@ class PropertyCalculatorTSNE(PropertyCalculator):
         """
         distances = self.pairwise_distances_torch(p1)
         nom = 1 / (1 + distances)
-        nom.fill_diagonal_(0)
-        return nom / torch.sum(torch.sum(nom))
+        nom_div = torch.sum(nom.clone().fill_diagonal_(0))
+        return nom / nom_div
 
     def forward(self, **kwargs):
         """
@@ -287,21 +288,20 @@ class PropertyCalculatorTSNE(PropertyCalculator):
         self.check_required_input(**kwargs)
 
         # get points from exploration
-        p1, _ = kwargs["points"]
+        p1 = kwargs["encoded_points"]
         ind1 = kwargs["indices"]
 
         # low dim distances
         low_dist = self.get_low_dim_property(p1)
+        low_dist.fill_diagonal_(0)
 
         # high dim distances for this specific batch
         high_dist = self.high_dim_property[ind1][:, ind1]
         # normalize according to batch
         high_dist = high_dist / high_dist.sum(axis=1).reshape([-1, 1])
+        high_dist.fill_diagonal_(0)
         # make distances symmetric
         high_symmetric_distances = self.symmetrize(high_dist, len(ind1))
-        # convert to tensor, do not need any grad before this point
-        high_symmetric_distances = torch.tensor(high_symmetric_distances, requires_grad=True).float().to(self._device)
-        high_symmetric_distances.fill_diagonal_(0)
 
         return {"low_dim_property": low_dist, "high_dim_property": high_symmetric_distances}
 
@@ -315,35 +315,54 @@ class PropertyCalculatorTSNE(PropertyCalculator):
 
     @staticmethod
     def pairwise_distances_torch(x):
-        x = x.unsqueeze(1)
-        diff = x - x.transpose(0, 1)
-        dist_squared = torch.sum(diff ** 2, dim=2)
-        return dist_squared
+        # expand for easy computation
+        p_i = x.unsqueeze(0)
+        p_j = x.unsqueeze(1)
+
+        # calculate squared euclidian norm
+        diff = p_i - p_j
+        diff = diff ** 2
+        diff = diff.sum(-1)
+        return diff
 
     @staticmethod
-    def p_conditional(dists, sigmas):
+    def p_conditional(dists, sigmas, normalize=True):
         """
-        get conditional probabilities between points in high dimension
-        does NOT normalize, because this is done for the batch specifically
+        Get conditional probabilities between points in high dimension using PyTorch.
+        :param dists: pairwise distances between points in 2d tensor
+        :param sigmas: compute sigmas for gaussian distributions
+        :param normalize:
+            if set to False: does NOT normalize, because this is done for the batch specifically.
         """
-        e = np.exp(-dists / (2 * np.square(sigmas.reshape((-1, 1)))))
-        np.fill_diagonal(e, 0.)
+        # reshape sigmas for broadcasting
+        sigmas = sigmas.reshape(-1, 1)
+
+        # main calculation
+        e = torch.exp(-dists / (2 * torch.square(sigmas)))
+
+        # avoid division by zero or log of zero in subsequent operations
+        e.fill_diagonal_(0)
         e += 1e-8
+
+        # normalize
+        if normalize:
+            e = e / e.sum(dim=1, keepdim=True)
+
         return e
 
     @staticmethod
     def perp(conditional_matrix):
-        ent = -np.sum(conditional_matrix * np.log2(conditional_matrix), 1)
+        ent = -torch.sum(conditional_matrix * torch.log2(conditional_matrix), dim=1)
         return 2 ** ent
 
     @staticmethod
-    def binary_search(func, goal, tol=1e-10, max_iters=1000, lower_bound=1e-20, upper_bound=10000):
+    def binary_search(func, goal, tol=1e-10, max_iters=20, lower_bound=1e-20, upper_bound=10000):
         """
         binary search to find sigmas according to perplexity hyperparameter
         """
-        guess = 0
+        guess = torch.tensor((upper_bound + lower_bound) / 2.0)
         for _ in range(max_iters):
-            guess = (upper_bound + lower_bound) / 2.
+            guess = (upper_bound + lower_bound) / 2.0
             val = func(guess)
 
             if val > goal:
@@ -351,13 +370,18 @@ class PropertyCalculatorTSNE(PropertyCalculator):
             else:
                 lower_bound = guess
 
-            if np.abs(val - goal) <= tol:
+            if abs(val - goal) <= tol:
                 return guess
         return guess
 
     def find_sigmas(self, dists):
-        found_sigmas = np.zeros(dists.shape[0])
-        for i in range(dists.shape[0]):
-            func = lambda sig: self.perp(self.p_conditional(dists[i:i + 1, :], np.array([sig])))
+        # tensor for the sigma values, on the same device as dists
+        found_sigmas = torch.zeros(dists.shape[0], device=dists.device)
+
+        for i in tqdm(range(dists.shape[0])):
+            # lambda function for the current row of dists
+            func = lambda sig: self.perp(
+                self.p_conditional(dists[i:i + 1, :], torch.tensor([sig], device=dists.device)))
+            # binary search to find the sigma that matches the perplexity for the row
             found_sigmas[i] = self.binary_search(func, self.perplexity)
         return found_sigmas

@@ -136,14 +136,13 @@ class RewardCalculatorTSNE(RewardCalculator):
         q = kwargs["low_dim_property"]
         p = kwargs["high_dim_property"]
 
-        # compute KL divergence loss
-        """kl_divergence = p * (torch.log(p) - torch.log(q))
-        kl_divergence.fill_diagonal_(0)
+        # prevent division by 0
+        p += 1e-8
+        q += 1e-8
+
+        # compute KL divergence loss as in T-SNE paper
+        kl_divergence = p * (torch.log(p) - torch.log(q))
         kl_divergence = kl_divergence.sum()
-        kl_reward = (-1) * kl_divergence"""
+        kl_reward = (-1) * kl_divergence
 
-        # compute MSE loss
-        mse = f.mse_loss(p, q, reduction='mean')
-        mse_reward = (-1) * mse
-
-        return {"encoder_reward": mse_reward}
+        return {"encoder_reward": kl_reward}
