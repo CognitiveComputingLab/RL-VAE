@@ -2,7 +2,6 @@
 file contains helper functions for the RL-VAE etc.
 """
 import torch
-import numpy as np
 
 
 class ToyTorchDataset(torch.utils.data.Dataset):
