@@ -49,6 +49,39 @@ class SamplerVAE(Sampler):
     def __init__(self, device, data_loader):
         super().__init__(device, data_loader)
 
+        self._available_indices = list(range(len(self._data_loader.dataset)))
+        
+    def reset_epoch(self):
+        super().reset_epoch()
+        self._available_indices = list(range(len(self._data_loader.dataset)))
+
+    def get_random_batch_indices(self):
+        """
+        Get indices of next batch of points by randomly selecting indices that weren't chosen so far.
+        :return: pytorch tensor of shape [x] with x amount of indices, the indices as a tensor of points
+        """
+        # Determine the batch size
+        batch_size = min(self._data_loader.batch_size, len(self._available_indices))
+
+        # Randomly select indices without replacement
+        selected_indices = torch.randperm(len(self._available_indices))[:batch_size].tolist()
+        indices = [self._available_indices[i] for i in selected_indices]
+
+        # Remove selected indices from the list of available indices
+        for idx in sorted(selected_indices, reverse=True):
+            self._available_indices.pop(idx)
+
+        indices_tensor = torch.tensor(indices)
+
+        # reset
+        if len(self._available_indices) == 0:
+            self._epoch_done = True
+
+        # Keep track of the current batch indices
+        self._current_x_batch = indices_tensor
+
+        return indices_tensor
+
     def get_batch_indices(self):
         """
         get indices of next batch of points by naively looping through the dataset
@@ -82,7 +115,10 @@ class SamplerVAE(Sampler):
         self.check_required_input(**kwargs)
 
         # get indices of batch
-        indices_tensor = self.get_batch_indices()
+        if isinstance(self._data_loader.sampler, torch.utils.data.RandomSampler):
+            indices_tensor = self.get_random_batch_indices()
+        else:
+            indices_tensor = self.get_batch_indices()
 
         # get actual points
         points = self.get_points_from_indices(indices_tensor)

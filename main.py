@@ -79,10 +79,10 @@ if __name__ == "__main__":
     # initialise the model
     # model = examples.UMAP(3, 2, device, data_loader)
     # model = examples.TSNE(3, 2, device, data_loader)
-    # model = examples.VAE(3, 2, device, data_loader)
+    model = examples.VAE(3, 2, device, data_loader)
     # model = examples.VarianceVAE(3, 2, device, data_loader)
-    # model.reward.success_weight = 100
-    model = examples.KHeadVAEDecreasing(3, 2, device, data_loader, k=5)
+    model.reward.success_weight = 100
+    # model = examples.KHeadVAEDecreasing(3, 2, device, data_loader, k=5)
 
     # train the model
     m = Main(model)

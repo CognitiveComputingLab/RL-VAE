@@ -95,12 +95,14 @@ class UMAP(nn.Module):
     def forward(self, epoch=0):
         sampler_out = self.sampler(**{"high_dim_property": self.property.high_dim_property})
         encoder_out = self.encoder(**sampler_out)
+
+        if not self.training:
+            return encoder_out["encoded_points"], sampler_out["points"][1]
+
         property_out = self.property(**merge_dicts(sampler_out, encoder_out))
         reward_out = self.reward(**merge_dicts(sampler_out, encoder_out, property_out))
 
-        if self.training:
-            return reward_out, self.sampler.epoch_done
-        return encoder_out["encoded_points"], sampler_out["points"][1]
+        return reward_out, self.sampler.epoch_done
 
 
 class TSNE(nn.Module):
@@ -122,10 +124,12 @@ class TSNE(nn.Module):
     def forward(self, epoch=0):
         sampler_out = self.sampler()
         encoder_out = self.encoder(**sampler_out)
+
+        if not self.training:
+            return encoder_out["encoded_points"], sampler_out["points"][1]
+
         property_out = self.property(**merge_dicts(sampler_out, encoder_out))
         reward_out = self.reward(**merge_dicts(sampler_out, encoder_out, property_out))
 
-        if self.training:
-            return reward_out, self.sampler.epoch_done
-        return encoder_out["encoded_points"], sampler_out["points"][1]
+        return reward_out, self.sampler.epoch_done
 
