@@ -6,6 +6,7 @@ import torch
 import examples
 from toy_data import data, toy_torch_dataset
 from tqdm import tqdm
+import rl_embeddings.pre_trainers as pre_trainers
 
 
 def get_device():
@@ -62,7 +63,6 @@ class Main:
         # un-init
         self.emb_model.train()
 
-
 if __name__ == "__main__":
     # get pytorch device
     device = get_device()
@@ -84,7 +84,11 @@ if __name__ == "__main__":
     model.reward.success_weight = 100
     # model = examples.KHeadVAEDecreasing(3, 2, device, data_loader, k=5)
 
+    # pretrain on spectral embedding
+    pre_trainer = pre_trainers.SpectralPreTrainer(model, device, data_loader)
+    pre_trainer.pre_train_encoder(10)
+
     # train the model
     m = Main(model)
-    m.train(epochs=11, latent_freq=5)
+    # m.train(epochs=11, latent_freq=5)
 
