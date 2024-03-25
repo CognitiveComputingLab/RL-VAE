@@ -76,6 +76,9 @@ class Main:
             print("reward history is empty, aborting plot")
             return
 
+        # remove first to increase visibility
+        self.reward_history = self.reward_history[1:]
+
         # generating indices for x-axis
         indices = list(range(len(self.reward_history)))
 
@@ -94,21 +97,21 @@ if __name__ == "__main__":
     device = get_device()
 
     # initialise the dataset as a pytorch dataloader
-    toy_data = data.MoebiusStrip(turns=1, n=1000).generate()
+    toy_data = data.CoilData(n=210).generate()
     toy_dataset = toy_torch_dataset.ToyTorchDataset(toy_data)
     data_loader = torch.utils.data.DataLoader(
         toy_dataset,
-        batch_size=100,
+        batch_size=13,
         shuffle=False
     )
 
     # initialise the model
-    model = examples.UMAP(3, 2, device, data_loader)
+    model = examples.UMAP(49152, 2, device, data_loader)
     # model = examples.TSNE(3, 2, device, data_loader)
     # model = examples.VAE(3, 2, device, data_loader)
     # model = examples.VarianceVAE(3, 2, device, data_loader)
-    # model.reward.success_weight = 100
     # model = examples.KHeadVAEDecreasing(3, 2, device, data_loader, k=5)
+    # model.reward.success_weight = 100
 
     # Main
     m = Main(model)
@@ -121,7 +124,8 @@ if __name__ == "__main__":
     m.plot_latent(f"images/pre-trained.png")
 
     # train the model
-    m.train(epochs=100, latent_freq=0)
+    # model.explorer.epsilon = model.explorer.epsilon_start
+    m.train(epochs=200, latent_freq=50)
     m.plot_latent(f"images/post-training.png")
     m.plot_reward(f"images/reward-history.png")
 

@@ -19,6 +19,24 @@ class GeneralModel(nn.Module):
         return x
 
 
+class ConvGeneralModel(nn.Module):
+    def __init__(self, in_channels, hidden_channels):
+        super(ConvGeneralModel, self).__init__()
+        self.layers = nn.ModuleList()
+        for h_dim in hidden_channels:
+            self.layers.append(nn.Sequential(
+                nn.Conv2d(in_channels, h_dim, 4, 2, 1),
+                nn.ReLU(),
+            ))
+            in_channels = h_dim
+
+    def forward(self, x):
+        for layer in self.layers:
+            x = layer(x)
+        x = x.flatten(1)
+        return x
+
+
 class EncoderSimple(nn.Module, Component):
     def __init__(self, input_dim, latent_dim):
         super(EncoderSimple, self).__init__()
@@ -82,6 +100,12 @@ class EncoderUMAP(nn.Module, Component):
         mu2 = self.linear1(self.gm(x2))
 
         return {"encoded_points": mu1, "encoded_complementary_points": mu2}
+
+
+class EncoderUMAPConv(EncoderUMAP):
+    def __init__(self, input_dim, latent_dim):
+        super(EncoderUMAPConv, self).__init__(input_dim, latent_dim)
+        self.gm = ConvGeneralModel(input_dim, [16, 32, 64, 128, 256])
 
 
 class EncoderVAE(nn.Module, Component):

@@ -1,6 +1,9 @@
 import abc
+import os
+import re
 
 import numpy as np
+from PIL import Image
 
 from toy_data.plotting import scatter3d, mpl_2d_plot, change_lightness
 from toy_data.util import DynamicImporter
@@ -71,10 +74,71 @@ class ToyData(abc.ABC):
         raise NotImplementedError("No plotting function defined for this dataset")
 
 
+class CoilData(ToyData):
+    def __init__(self, n):
+        super().__init__(n)
+        self._colors = None
+
+    @staticmethod
+    def generate_color_for_label(label):
+        """
+        generate random color seeded with labels
+        each label will have a unique color assigned
+        """
+        np.random.seed(label)
+        return tuple(np.random.rand(3))
+
+    def generate(self):
+        directory = "data/coil-100"
+        image_files = [f for f in os.listdir(directory) if f.endswith(".png")]
+
+        # keep track of data
+        images_list = []
+        labels_list = []
+        colors_list = []
+        color_map = {}
+
+        for filename in image_files:
+            file_path = os.path.join(directory, filename)
+            label = int(re.search(r'obj(\d+)_', filename).group(1))
+
+            if label not in color_map:
+                color_map[label] = self.generate_color_for_label(label)
+            color = color_map[label]
+
+            # open the image file
+            with Image.open(file_path) as img:
+                # convert image to grayscale
+                # img_gray = img.convert('L')
+                # normalize and flatten the image
+                img_normalized = np.array(img) / 255.0
+                img_flattened = img_normalized.reshape(-1)
+
+                # add to loaded images
+                images_list.append(img_flattened)
+                labels_list.append(label)
+                colors_list.append(color)
+
+        # convert lists to numpy arrays
+        images_array = np.stack(images_list)
+        labels_array = np.stack(labels_list)
+        colors_array = np.stack(colors_list)
+
+        # No need to reorder the dimensions since we're flattening the images
+        self._data = images_array[:self.n]
+        self._labels = labels_array[:self.n]
+        self._colors = colors_array[:self.n]
+
+        return self
+
+    @property
+    def colors(self):
+        return self._colors
+
+
 class MusicData(ToyData):
     def __init__(self, n):
         super().__init__(n)
-        self.n = n
 
     def generate(self):
         data_path = "data/data_WTK_r200_p0.0_s0.03_c0_sparse_corpus.npy"
