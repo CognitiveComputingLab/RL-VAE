@@ -43,6 +43,17 @@ class PreTrainerSpectral:
         if hasattr(self._emb_model, "decoder"):
             self.pre_train_decoder(epochs)
 
+    def get_model_embedded(self, batch_points, epoch):
+        """
+        pass batch of original datapoints through encoder of embedding model
+        """
+        sampler_out = {"points": (batch_points, None), "complementary_points": (batch_points, None)}
+        out = self._emb_model.encoder(**sampler_out)
+        if hasattr(self._emb_model, "explorer"):
+            out["epoch"] = epoch
+            out = self._emb_model.explorer(**out)
+        return out
+
     def pre_train_encoder(self, epochs):
         """
         pre-train the encoder on spectral embedding for given data
@@ -56,18 +67,14 @@ class PreTrainerSpectral:
             for i in range(0, len(self.data), self.batch_size):
                 # get batch of datapoints
                 batch_points = self.data[i:i+self.batch_size]
-                batch_embedded = self.embedded[i:i+self.batch_size]
+                spectral_embedded = self.embedded[i:i+self.batch_size]
 
                 # embed with model
-                sampler_out = {"points": (batch_points, None), "complementary_points": (batch_points, None)}
-                out = self._emb_model.encoder(**sampler_out)
-                if hasattr(self._emb_model, "explorer"):
-                    out["epoch"] = epoch
-                    out = self._emb_model.explorer(**out)
-
-                # compare embedding with spectral
+                out = self.get_model_embedded(batch_points, epoch)
                 encoded_points = out["encoded_points"]
-                loss = loss_fn(encoded_points, batch_embedded)
+
+                # compare encoded with spectral embedding
+                loss = loss_fn(encoded_points, spectral_embedded)
 
                 optimizer.zero_grad()
                 loss.backward()
@@ -77,4 +84,28 @@ class PreTrainerSpectral:
         """
         pre-train the decoder on spectral embedding for given data
         """
-        return
+        optimizer = torch.optim.Adam(list(self._emb_model.decoder.parameters()))
+        loss_fn = nn.MSELoss()
+
+        for epoch in tqdm(range(epochs), disable=False):
+
+            # run through epoch
+            for i in range(0, len(self.data), self.batch_size):
+                # get batch of datapoints
+                batch_points = self.data[i:i + self.batch_size]
+
+                # embed with model and detach gradient
+                encoder_out = self.get_model_embedded(batch_points, epoch)
+                encoder_out["encoded_points"] = encoder_out["encoded_points"].detach()
+
+                # decode
+                out = self._emb_model.decoder(**encoder_out)
+                decoded_points = out["decoded_points"]
+
+                # compare decoded to original
+                loss = loss_fn(decoded_points, batch_points)
+
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+
