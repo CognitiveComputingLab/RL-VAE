@@ -92,6 +92,13 @@ class Main:
         plt.close()
 
 
+def compare_umap(toy_data_obj):
+    from toy_data.embedding import UMAP
+    umap_obj = UMAP(toy_data_obj)
+    umap_obj.fit()
+    umap_obj.plot()
+
+
 if __name__ == "__main__":
     # get pytorch device
     device = get_device()
