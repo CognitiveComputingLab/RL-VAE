@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 from tqdm import tqdm
 from sklearn.manifold import SpectralEmbedding
+import matplotlib.pyplot as plt
 
 
 class PreTrainerSpectral:
@@ -17,6 +18,16 @@ class PreTrainerSpectral:
         self.data = torch.from_numpy(data_loader.dataset.data).to(self._device).float()
         self.embedded = sp_embedding.fit_transform(data_loader.dataset.data)
         self.embedded = torch.from_numpy(self.embedded).to(self._device).float()
+        self.colors = torch.from_numpy(data_loader.dataset.colors).to(device).float()
+
+    def plot_spectral(self, path):
+        colors = self.colors[:, :3].to('cpu').detach().numpy()
+        embedded = self.embedded.to('cpu').detach().numpy()
+        plt.scatter(embedded[:, 0], embedded[:, 1], c=colors)
+        plt.gca().set_aspect('equal', 'datalim')
+        plt.title(f'latent projection')
+        plt.savefig(path)
+        plt.close()
 
     def pre_train(self, epochs=10):
         """
@@ -48,7 +59,7 @@ class PreTrainerSpectral:
                 batch_embedded = self.embedded[i:i+self.batch_size]
 
                 # embed with model
-                sampler_out = {"points": (batch_points, None)}
+                sampler_out = {"points": (batch_points, None), "complementary_points": (batch_points, None)}
                 out = self._emb_model.encoder(**sampler_out)
                 if hasattr(self._emb_model, "explorer"):
                     out["epoch"] = epoch

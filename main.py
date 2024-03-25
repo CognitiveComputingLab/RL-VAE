@@ -33,7 +33,7 @@ class Main:
                 loss.backward()
                 optimizer.step()
 
-            if epoch % latent_freq == 0:
+            if not latent_freq == 0 and epoch % latent_freq == 0:
                 self.plot_latent(f"images/latent-{epoch}.png")
 
     def plot_latent(self, path):
@@ -79,18 +79,23 @@ if __name__ == "__main__":
 
     # initialise the model
     # model = examples.UMAP(3, 2, device, data_loader)
-    # model = examples.TSNE(3, 2, device, data_loader)
-    model = examples.VAE(3, 2, device, data_loader)
+    model = examples.TSNE(3, 2, device, data_loader)
+    # model = examples.VAE(3, 2, device, data_loader)
     # model = examples.VarianceVAE(3, 2, device, data_loader)
-    model.reward.success_weight = 100
+    # model.reward.success_weight = 100
     # model = examples.KHeadVAEDecreasing(3, 2, device, data_loader, k=5)
+
+    # Main
+    m = Main(model)
+    m.plot_latent(f"images/no-training.png")
 
     # pretrain on spectral embedding
     pre_trainer = pre_trainers.PreTrainerSpectral(model, device, data_loader)
     pre_trainer.pre_train(epochs=100)
+    pre_trainer.plot_spectral("images/spectral.png")
+    m.plot_latent(f"images/pre-trained.png")
 
     # train the model
-    m = Main(model)
-    m.plot_latent(f"images/pre-train.png")
-    # m.train(epochs=11, latent_freq=5)
+    m.train(epochs=100, latent_freq=0)
+    m.plot_latent(f"images/post-training.png")
 
