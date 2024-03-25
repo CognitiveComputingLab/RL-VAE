@@ -17,6 +17,7 @@ def get_device():
 class Main:
     def __init__(self, emb_model):
         self.emb_model = emb_model
+        self.reward_history = []
 
     def train(self, epochs, latent_freq=10):
         optimizer = torch.optim.Adam(list(self.emb_model.parameters()))
@@ -25,13 +26,17 @@ class Main:
 
             # run through epoch
             epoch_done = False
+            epoch_reward = 0
             while not epoch_done:
                 reward, epoch_done = self.emb_model(epoch)
                 loss = -reward[self.emb_model.reward_name]
+                epoch_reward += float(reward[self.emb_model.reward_name])
 
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
+
+            self.reward_history.append(epoch_reward)
 
             if not latent_freq == 0 and epoch % latent_freq == 0:
                 self.plot_latent(f"images/latent-{epoch}.png")
@@ -62,6 +67,26 @@ class Main:
 
         # un-init
         self.emb_model.train()
+
+    def plot_reward(self, path):
+        """
+        plot the reward history of training the model
+        """
+        if len(self.reward_history) == 0:
+            print("reward history is empty, aborting plot")
+            return
+
+        # generating indices for x-axis
+        indices = list(range(len(self.reward_history)))
+
+        # generate image
+        plt.plot(indices, self.reward_history, marker='o', linestyle='-', color='green')
+        plt.title('Reward History Plot')
+        plt.xlabel('Epoch')
+        plt.ylabel('Reward')
+        plt.grid(True)
+        plt.savefig(path)
+        plt.close()
 
 
 if __name__ == "__main__":
@@ -98,4 +123,5 @@ if __name__ == "__main__":
     # train the model
     m.train(epochs=100, latent_freq=0)
     m.plot_latent(f"images/post-training.png")
+    m.plot_reward(f"images/reward-history.png")
 
