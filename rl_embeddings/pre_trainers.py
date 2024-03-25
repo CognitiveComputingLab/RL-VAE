@@ -4,7 +4,7 @@ from tqdm import tqdm
 from sklearn.manifold import SpectralEmbedding
 
 
-class SpectralPreTrainer:
+class PreTrainerSpectral:
     def __init__(self, emb_model, device, data_loader):
         self._emb_model = emb_model
         self._device = device
@@ -42,10 +42,13 @@ class SpectralPreTrainer:
         for epoch in tqdm(range(epochs), disable=False):
 
             # run through epoch
-            epoch_done = False
-            while not epoch_done:
+            for i in range(0, len(self.data), self.batch_size):
+                # get batch of datapoints
+                batch_points = self.data[i:i+self.batch_size]
+                batch_embedded = self.embedded[i:i+self.batch_size]
+
                 # embed with model
-                sampler_out = {"points": (self.data, None)}
+                sampler_out = {"points": (batch_points, None)}
                 out = self._emb_model.encoder(**sampler_out)
                 if hasattr(self._emb_model, "explorer"):
                     out["epoch"] = epoch
@@ -53,13 +56,11 @@ class SpectralPreTrainer:
 
                 # compare embedding with spectral
                 encoded_points = out["encoded_points"]
-                loss = loss_fn(encoded_points, self.embedded)
-                print("loss ", loss)
+                loss = loss_fn(encoded_points, batch_embedded)
 
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
-                break
 
     def pre_train_decoder(self, epochs):
         """

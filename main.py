@@ -86,7 +86,7 @@ if __name__ == "__main__":
     # model = examples.KHeadVAEDecreasing(3, 2, device, data_loader, k=5)
 
     # pretrain on spectral embedding
-    pre_trainer = pre_trainers.SpectralPreTrainer(model, device, data_loader)
+    pre_trainer = pre_trainers.PreTrainerSpectral(model, device, data_loader)
     pre_trainer.pre_train(epochs=100)
 
     # train the model
