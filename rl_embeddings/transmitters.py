@@ -31,3 +31,27 @@ class TransmitterIdentity(Transmitter):
         self.check_required_input(**kwargs)
 
         return kwargs
+
+
+class TransmitterCircle(Transmitter):
+    def __init__(self, device):
+        super().__init__(device)
+
+        self._required_inputs = ["encoded_points"]
+
+    def forward(self, **kwargs):
+        """
+        transmit to create a noisy circle on a circular latent space
+        """
+        # check required arguments
+        self.check_required_input(**kwargs)
+
+        # get input
+        data = kwargs["encoded_points"]
+
+        # wrap around a circle
+        data_normalized = (data - data.min()) / (data.max() - data.min())
+        data_circular = data_normalized % 1.0
+
+        return {"transmitted_points": data_circular}
+
