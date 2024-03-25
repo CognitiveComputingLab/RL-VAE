@@ -15,19 +15,28 @@ class SpectralPreTrainer:
         # compute spectral embedding
         sp_embedding = SpectralEmbedding(n_components=2)
         self.data = torch.from_numpy(data_loader.dataset.data).to(self._device).float()
-        self.colors = torch.from_numpy(data_loader.dataset.colors).to(device).float()
         self.embedded = sp_embedding.fit_transform(data_loader.dataset.data)
         self.embedded = torch.from_numpy(self.embedded).to(self._device).float()
 
-    def pre_train_encoder(self, epochs=10):
+    def pre_train(self, epochs=10):
+        """
+        pre-train the embedding method networks on spectral embedding
+        """
+        if not hasattr(self._emb_model, "encoder"):
+            raise NotImplementedError("Trying to pre-train, but this model does not have an encoder.")
+
+        # pre-train the encoder first
+        self.pre_train_encoder(epochs)
+
+        # pre-train decoder based on encoder pre-training
+        if hasattr(self._emb_model, "decoder"):
+            self.pre_train_decoder(epochs)
+
+    def pre_train_encoder(self, epochs):
         """
         pre-train the encoder on spectral embedding for given data
         """
-        # check for encoder
-        if not hasattr(self._emb_model, "encoder"):
-            raise NotImplementedError("Trying to pre-train encoder, but this model does not have an encoder.")
-
-        optimizer = torch.optim.Adam(list(self._emb_model.parameters()))
+        optimizer = torch.optim.Adam(list(self._emb_model.encoder.parameters()))
         loss_fn = nn.MSELoss()
 
         for epoch in tqdm(range(epochs), disable=False):
@@ -36,7 +45,7 @@ class SpectralPreTrainer:
             epoch_done = False
             while not epoch_done:
                 # embed with model
-                sampler_out = {"points": (self.data, self.colors)}
+                sampler_out = {"points": (self.data, None)}
                 out = self._emb_model.encoder(**sampler_out)
                 if hasattr(self._emb_model, "explorer"):
                     out["epoch"] = epoch
@@ -52,10 +61,8 @@ class SpectralPreTrainer:
                 optimizer.step()
                 break
 
-    def pre_train_decoder(self):
+    def pre_train_decoder(self, epochs):
         """
         pre-train the decoder on spectral embedding for given data
         """
-        # check for decoder
-        if not hasattr(self._emb_model, "encoder"):
-            raise NotImplementedError("Trying to pre-train decoder, but this model does not have a decoder.")
+        return

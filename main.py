@@ -63,6 +63,7 @@ class Main:
         # un-init
         self.emb_model.train()
 
+
 if __name__ == "__main__":
     # get pytorch device
     device = get_device()
@@ -86,9 +87,10 @@ if __name__ == "__main__":
 
     # pretrain on spectral embedding
     pre_trainer = pre_trainers.SpectralPreTrainer(model, device, data_loader)
-    pre_trainer.pre_train_encoder(10)
+    pre_trainer.pre_train(epochs=100)
 
     # train the model
     m = Main(model)
+    m.plot_latent(f"images/pre-train.png")
     # m.train(epochs=11, latent_freq=5)
 
