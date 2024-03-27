@@ -82,7 +82,6 @@ class EncoderUMAP(nn.Module, Component):
     def forward(self, **kwargs):
         """
         pass regular points and complementary through general model
-        pass indices as identity function for later use
         """
         # check required arguments
         self.check_required_input(**kwargs)
@@ -96,10 +95,55 @@ class EncoderUMAP(nn.Module, Component):
         x2, _ = p2
 
         # pass regular and complementary points through network
-        mu1 = self.linear1(self.gm(x1))
-        mu2 = self.linear1(self.gm(x2))
+        mu1 = self.linear1(nn.ReLU(self.gm(x1)))
+        mu2 = self.linear1(nn.ReLU(self.gm(x2)))
 
         return {"encoded_points": mu1, "encoded_complementary_points": mu2}
+
+
+class EncoderKHeadUMAP(nn.Module, Component):
+    def __init__(self, input_dim, latent_dim, k=2):
+        super(EncoderKHeadUMAP, self).__init__()
+        Component.__init__(self)
+        self._required_inputs = ["points", "complementary_points"]
+        self.k = k
+
+        # init network while assuming each point has the same dimension as input_dim
+        self.gm = GeneralModel(input_dim, [1024, 2048, 2048, 4096])
+
+        # output layers for each point
+        self.linear1 = nn.Linear(4096, k * latent_dim)
+
+        # head weights
+        self.weight_gm = GeneralModel(input_dim, [1024, 2048, 2048, 4096])
+        self.linear_weight = nn.Linear(4096, k)
+
+    def forward(self, **kwargs):
+        """
+        pass regular points and complementary through general model for each head
+        compute probability weights of choosing each head with softmax
+        """
+        # check required arguments
+        self.check_required_input(**kwargs)
+
+        # get regular points from sample_out
+        p1 = kwargs["points"]
+        p2 = kwargs["complementary_points"]
+
+        # get xs from points
+        x1, _ = p1
+        x2, _ = p2
+
+        # pass regular and complementary points through network
+        mu1 = self.linear1(nn.ReLU(self.gm(x1)))
+        mu2 = self.linear1(nn.ReLU(self.gm(x2)))
+
+        # get the weights
+        weights = self.weight_gm(x1)
+        weights = self.linear_weight(weights)
+        weights = nn.functional.softmax(weights, dim=1)
+
+        return {"head_means": mu1, "head_complementary_means": mu2, "head_weights": weights}
 
 
 class EncoderUMAPConv(EncoderUMAP):
@@ -130,6 +174,7 @@ class EncoderVAE(nn.Module, Component):
 
         # get distribution parameters
         x = self.gm(x)
+        x = nn.ReLU(x)
         mu = self.linearM(x)
         log_var = self.linearS(x)
 

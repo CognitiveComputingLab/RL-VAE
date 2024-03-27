@@ -104,11 +104,11 @@ if __name__ == "__main__":
     device = get_device()
 
     # initialise the dataset as a pytorch dataloader
-    toy_data = data.CoilData(n=210).generate()
+    toy_data = data.Sphere3D(n=1000).generate()
     toy_dataset = toy_torch_dataset.ToyTorchDataset(toy_data)
     data_loader = torch.utils.data.DataLoader(
         toy_dataset,
-        batch_size=13,
+        batch_size=100,
         shuffle=False
     )
 
