@@ -76,6 +76,15 @@ class VarianceVAE(VAE):
         self.explorer = explorers.ExplorerVariance(device)
 
 
+class VarianceVAEDecreasing(VarianceVAE):
+    def __init__(self, input_dim, latent_dim, device, data_loader):
+        super(VarianceVAE, self).__init__(input_dim, latent_dim, device, data_loader)
+
+        # components
+        self.encoder = encoders.EncoderSimple(input_dim, latent_dim).to(device)
+        self.explorer = explorers.ExplorerVarianceDecreasing(device)
+
+
 class UMAP(nn.Module):
     def __init__(self, input_dim, latent_dim, device, data_loader):
         super(UMAP, self).__init__()

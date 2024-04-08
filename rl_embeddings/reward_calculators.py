@@ -49,7 +49,7 @@ class RewardCalculatorVAE(RewardCalculator):
         # KL term with prior as gaussian
         kl_divergence = 0.5 * torch.sum(-1 - log_var + mu.pow(2) + log_var.exp())
 
-        # reconstruction term
+        # add reconstruction term
         total_loss = f.mse_loss(x_b, x_a, reduction='sum') * self.success_weight + kl_divergence * self.kl_weight
         total_reward = (-1) * total_loss
 

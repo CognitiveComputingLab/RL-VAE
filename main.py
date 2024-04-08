@@ -40,6 +40,7 @@ class Main:
 
             if not latent_freq == 0 and epoch % latent_freq == 0:
                 self.plot_latent(f"images/latent-{epoch}.png")
+                print(self.emb_model.explorer.epsilon)
 
     def plot_latent(self, path):
         # init
@@ -104,7 +105,7 @@ if __name__ == "__main__":
     device = get_device()
 
     # initialise the dataset as a pytorch dataloader
-    toy_data = data.Sphere3D(n=1000).generate()
+    toy_data = data.MoebiusStrip(turns=1, n=1000).generate()
     toy_dataset = toy_torch_dataset.ToyTorchDataset(toy_data)
     data_loader = torch.utils.data.DataLoader(
         toy_dataset,
@@ -113,26 +114,28 @@ if __name__ == "__main__":
     )
 
     # initialise the model
-    model = examples.UMAP(49152, 2, device, data_loader)
+    # model = examples.UMAP(3, 2, device, data_loader)
     # model = examples.TSNE(3, 2, device, data_loader)
     # model = examples.VAE(3, 2, device, data_loader)
     # model = examples.VarianceVAE(3, 2, device, data_loader)
-    # model = examples.KHeadVAEDecreasing(3, 2, device, data_loader, k=5)
-    # model.reward.success_weight = 100
+    model = examples.KHeadVAEDecreasing(3, 2, device, data_loader, k=5)
+    # model.explorer.current_exploration = 0
+    model.reward.success_weight = 100
+    # model.reward.kl_weight = 0
 
     # Main
     m = Main(model)
     m.plot_latent(f"images/no-training.png")
 
     # pretrain on spectral embedding
-    pre_trainer = pre_trainers.PreTrainerSpectral(model, device, data_loader)
-    pre_trainer.pre_train(epochs=100)
-    pre_trainer.plot_spectral("images/spectral.png")
-    m.plot_latent(f"images/pre-trained.png")
+    # pre_trainer = pre_trainers.PreTrainerSpectral(model, device, data_loader)
+    # pre_trainer.pre_train(epochs=100)
+    # pre_trainer.plot_spectral("images/spectral.png")
+    # m.plot_latent(f"images/pre-trained.png")
 
     # train the model
     # model.explorer.epsilon = model.explorer.epsilon_start
-    m.train(epochs=200, latent_freq=50)
+    m.train(epochs=1000, latent_freq=50)
     m.plot_latent(f"images/post-training.png")
     m.plot_reward(f"images/reward-history.png")
 

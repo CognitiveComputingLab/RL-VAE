@@ -1,4 +1,5 @@
 import torch.nn as nn
+import torch.nn.functional as f
 from rl_embeddings.components import Component
 
 
@@ -95,8 +96,8 @@ class EncoderUMAP(nn.Module, Component):
         x2, _ = p2
 
         # pass regular and complementary points through network
-        mu1 = self.linear1(nn.ReLU(self.gm(x1)))
-        mu2 = self.linear1(nn.ReLU(self.gm(x2)))
+        mu1 = self.linear1(f.relu(self.gm(x1)))
+        mu2 = self.linear1(f.relu(self.gm(x2)))
 
         return {"encoded_points": mu1, "encoded_complementary_points": mu2}
 
@@ -135,8 +136,8 @@ class EncoderKHeadUMAP(nn.Module, Component):
         x2, _ = p2
 
         # pass regular and complementary points through network
-        mu1 = self.linear1(nn.ReLU(self.gm(x1)))
-        mu2 = self.linear1(nn.ReLU(self.gm(x2)))
+        mu1 = self.linear1(f.relu(self.gm(x1)))
+        mu2 = self.linear1(f.relu(self.gm(x2)))
 
         # get the weights
         weights = self.weight_gm(x1)
@@ -174,7 +175,7 @@ class EncoderVAE(nn.Module, Component):
 
         # get distribution parameters
         x = self.gm(x)
-        x = nn.ReLU(x)
+        x = f.relu(x)
         mu = self.linearM(x)
         log_var = self.linearS(x)
 

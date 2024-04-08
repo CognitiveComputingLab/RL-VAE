@@ -58,7 +58,7 @@ class ExplorerKHeadVAE(Explorer):
 
         # hyperparameters
         self.min_epsilon = 0.1
-        self.decay_rate = 0.9
+        self.decay_rate = 0.999
         self.epsilon_start = 0.9
 
         # exploration tracking
@@ -67,19 +67,18 @@ class ExplorerKHeadVAE(Explorer):
         self.previous_epoch = 0
 
     def train(self: T, mode: bool = True) -> T:
-        # activate exploration
-        self.epsilon = self.epsilon_save
+        # eval calls
+        if not mode:
+            # no exploration during evaluation
+            self.epsilon_save = self.epsilon
+            self.epsilon = 0
+        # training mode
+        else:
+            # activate exploration
+            self.epsilon = self.epsilon_save
 
         # train for pytorch module
         return super().train(mode)
-
-    def eval(self: T) -> T:
-        # no exploration during evaluation
-        self.epsilon_save = self.epsilon
-        self.epsilon = 0
-
-        # eval for pytorch module
-        return super().eval()
 
     def exploration_function(self, epoch):
         """
@@ -168,11 +167,19 @@ class ExplorerVariance(Explorer):
         self.current_exploration = self.starting_exploration
         self.exploration_save = self.current_exploration
 
-    def eval(self: T) -> T:
-        self.exploration_save = self.current_exploration
-        self.current_exploration = 0
+    def train(self: T, mode: bool = True) -> T:
+        # eval calls
+        if not mode:
+            # no exploration during evaluation
+            self.exploration_save = self.current_exploration
+            self.current_exploration = 0
+        # training mode
+        else:
+            # activate exploration
+            self.current_exploration = self.exploration_save
 
-        return super().eval()
+        # train for pytorch module
+        return super().train(mode)
 
     def exploration_function(self, epoch):
         """
@@ -220,8 +227,11 @@ class ExplorerVarianceDecreasing(ExplorerVariance):
         super().__init__(device)
 
         # hyperparameters
-        self.exploration_decay = 0.9
+        self.exploration_decay = 0.999
         self.min_exploration = 0.01
+
+        # keep track of epoch
+        self._current_epoch = 0
 
     def exploration_function(self, epoch):
         """
@@ -230,6 +240,10 @@ class ExplorerVarianceDecreasing(ExplorerVariance):
         # no exploration in eval mode
         if not self.training:
             return
+        # only update exploration every epoch
+        if self._current_epoch == epoch:
+            return
+        self._current_epoch = epoch
 
         # adjust exploration over time
         self.current_exploration = max(self.min_exploration, self.current_exploration * self.exploration_decay)
