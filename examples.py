@@ -74,6 +74,7 @@ class VarianceVAE(VAE):
         # components
         self.encoder = encoders.EncoderSimple(input_dim, latent_dim).to(device)
         self.explorer = explorers.ExplorerVariance(device)
+        self.reward = reward_calculators.RewardCalculatorMSE(device)
 
 
 class VarianceVAEDecreasing(VarianceVAE):

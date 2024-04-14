@@ -226,6 +226,6 @@ class EncoderKHeadVAE(nn.Module, Component):
 
         weights = self.weight_gm(x)
         weights = self.linear_weight(weights)
-        weights = nn.functional.softmax(weights, dim=1)
+        # weights = nn.functional.softmax(weights, dim=1)
 
         return {"head_means": mu, "head_log_vars": logvar, "head_weights": weights}

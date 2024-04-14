@@ -40,7 +40,7 @@ class Main:
 
             if not latent_freq == 0 and epoch % latent_freq == 0:
                 self.plot_latent(f"images/latent-{epoch}.png")
-                print(self.emb_model.explorer.epsilon)
+                print(self.emb_model.explorer.current_exploration)
 
     def plot_latent(self, path):
         # init
@@ -109,7 +109,7 @@ if __name__ == "__main__":
     toy_dataset = toy_torch_dataset.ToyTorchDataset(toy_data)
     data_loader = torch.utils.data.DataLoader(
         toy_dataset,
-        batch_size=100,
+        batch_size=10,
         shuffle=False
     )
 
@@ -117,15 +117,15 @@ if __name__ == "__main__":
     # model = examples.UMAP(3, 2, device, data_loader)
     # model = examples.TSNE(3, 2, device, data_loader)
     # model = examples.VAE(3, 2, device, data_loader)
-    # model = examples.VarianceVAE(3, 2, device, data_loader)
-    model = examples.KHeadVAEDecreasing(3, 2, device, data_loader, k=5)
+    model = examples.VarianceVAEDecreasing(3, 2, device, data_loader)
+    # model = examples.KHeadVAEDecreasing(3, 2, device, data_loader, k=5)
     # model.explorer.current_exploration = 0
     model.reward.success_weight = 100
     # model.reward.kl_weight = 0
 
     # Main
     m = Main(model)
-    m.plot_latent(f"images/no-training.png")
+    # m.plot_latent(f"images/no-training.png")
 
     # pretrain on spectral embedding
     # pre_trainer = pre_trainers.PreTrainerSpectral(model, device, data_loader)
@@ -134,8 +134,8 @@ if __name__ == "__main__":
     # m.plot_latent(f"images/pre-trained.png")
 
     # train the model
-    # model.explorer.epsilon = model.explorer.epsilon_start
-    m.train(epochs=1000, latent_freq=50)
+    # TODO multi head not working! torch.where gradients?
+    m.train(epochs=1000, latent_freq=20)
     m.plot_latent(f"images/post-training.png")
     m.plot_reward(f"images/reward-history.png")
 

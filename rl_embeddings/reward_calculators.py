@@ -35,7 +35,6 @@ class RewardCalculatorVAE(RewardCalculator):
         """
         compute reward for encoder and decoder
         a VAE only trains the encoder and decoder jointly
-        therefore only the total_reward is non-trivial
         """
         # check required arguments
         self.check_required_input(**kwargs)
@@ -56,11 +55,36 @@ class RewardCalculatorVAE(RewardCalculator):
         return {"total_reward": total_reward}
 
 
+class RewardCalculatorMSE(RewardCalculator):
+    def __init__(self, device):
+        super().__init__(device)
+        self._required_inputs = ["points", "decoded_points"]
+
+        # hyperparameters
+        self.success_weight = 1
+
+    def forward(self, **kwargs):
+        """
+        MSE difference between encoder input and decoder output
+        """
+        # check required arguments
+        self.check_required_input(**kwargs)
+
+        # get information from different steps of embedding process
+        x_a, _ = kwargs["points"]
+        x_b = kwargs["decoded_points"]
+
+        # add reconstruction term
+        total_loss = f.mse_loss(x_b, x_a, reduction='sum') * self.success_weight
+        total_reward = (-1) * total_loss
+
+        return {"total_reward": total_reward}
+
+
 class RewardCalculatorKHeadVAE(RewardCalculator):
     def __init__(self, device):
         super().__init__(device)
-        self._required_inputs = ["head_weights", "points", "decoded_points", "chosen_indices", "chosen_means",
-                                 "chosen_log_vars"]
+        self._required_inputs = ["points", "decoded_points", "chosen_weights", "chosen_means", "chosen_log_vars"]
 
         # hyperparameters
         self.success_weight = 1
@@ -74,21 +98,23 @@ class RewardCalculatorKHeadVAE(RewardCalculator):
         self.check_required_input(**kwargs)
 
         # get information from different steps of embedding process
-        weight = kwargs["head_weights"]
         x_a, _ = kwargs["points"]
         x_b = kwargs["decoded_points"]
-        chosen_indices = kwargs["chosen_indices"]
+        chosen_weights = kwargs["chosen_weights"]
         chosen_mu = kwargs["chosen_means"]
         chosen_log_var = kwargs["chosen_log_vars"]
 
-        # tensor for multiplying reward with probability
-        mean_weights = weight.gather(1, chosen_indices.unsqueeze(1))
+        chosen_weights = chosen_weights.view(chosen_weights.shape[0], 1)
+
+        # print("chosen weights: ", chosen_weights)
+        # print("chosen means: ", chosen_mu)
+        # print("chosen log_var", chosen_log_var)
 
         # similar to VAE loss, without KL term
         variance = torch.exp(chosen_log_var)
         surprise = variance + torch.square(chosen_mu)
         success = f.mse_loss(x_a, x_b)
-        total_loss = torch.sum((surprise + (success * self.success_weight)) * mean_weights)
+        total_loss = torch.sum((surprise + (success * self.success_weight)) * chosen_weights)
         total_reward = (-1) * total_loss
 
         return {"total_reward": total_reward}
