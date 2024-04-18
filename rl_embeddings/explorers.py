@@ -58,9 +58,9 @@ class ExplorerKHeadVAE(Explorer):
         self._required_inputs = ["epoch", "head_means", "head_log_vars", "head_weights"]
 
         # hyperparameters
-        self.min_epsilon = 0.0
+        self.min_epsilon = 0.01
         self.decay_rate = 0.999
-        self.epsilon_start = 0.0
+        self.epsilon_start = 2
 
         # exploration tracking
         self.epsilon = self.epsilon_start
@@ -72,7 +72,7 @@ class ExplorerKHeadVAE(Explorer):
         if not mode:
             # no exploration during evaluation
             self.epsilon_save = self.epsilon
-            self.epsilon = 0
+            self.epsilon = 0.001
         # training mode
         else:
             # activate exploration
@@ -108,25 +108,16 @@ class ExplorerKHeadVAE(Explorer):
         if epoch:
             self.exploration_function(epoch)
 
-        batch_size, num_choices = weight.shape
-
-        # choose points in batch based on probability
-        random_selection_mask = torch.rand(batch_size, device=self._device) < self.epsilon
-
         # get max weight index for each point in batch
-        gumbel_softmax_indices = f.gumbel_softmax(weight, tau=1, hard=True, dim=1)
+        gumbel_softmax_indices = f.gumbel_softmax(weight, tau=self.epsilon, hard=True, dim=1)
 
-        # generate random one-hot encoded selections for random indices
-        random_indices = torch.randint(0, num_choices, (batch_size,), device=self._device)
-        random_one_hot = f.one_hot(random_indices, num_classes=num_choices).to(dtype=weight.dtype, device=self._device)
-
-        # combine gumbel_softmax selection with random selection based on mask
-        chosen_one_hot = torch.where(random_selection_mask.unsqueeze(-1), random_one_hot, gumbel_softmax_indices)
+        # get weights
+        chosen_weights = torch.sum(gumbel_softmax_indices * weight, dim=1)
 
         # get chosen mu and log_var by multiplying with one hot choices
-        chosen_mu = torch.sum(chosen_one_hot.unsqueeze(2) * mu, dim=1)
-        chosen_log_var = torch.sum(chosen_one_hot.unsqueeze(2) * log_var, dim=1)
-        chosen_weights = torch.sum(chosen_one_hot * weight, dim=1)
+        gumbel_softmax_indices = gumbel_softmax_indices.view(-1, gumbel_softmax_indices.size(1), 1)
+        chosen_mu = torch.sum(gumbel_softmax_indices * mu, dim=1)
+        chosen_log_var = torch.sum(gumbel_softmax_indices * log_var, dim=1)
 
         # re-parameterize
         # compute the standard deviation
@@ -135,7 +126,6 @@ class ExplorerKHeadVAE(Explorer):
         eps = torch.randn_like(std)
         # generate a sample
         sample = chosen_mu + std * eps
-        # print("sample: ", sample)
 
         return {"encoded_points": sample, "chosen_weights": chosen_weights, "chosen_means": chosen_mu,
                 "chosen_log_vars": chosen_log_var}

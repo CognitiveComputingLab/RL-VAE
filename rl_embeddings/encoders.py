@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 import torch.nn.functional as f
 from rl_embeddings.components import Component
@@ -194,7 +195,7 @@ class EncoderKHeadVAE(nn.Module, Component):
         self.linearM = nn.Linear(4096, k * latent_dims)
         self.linearS = nn.Linear(4096, k * latent_dims)
         self.weight_gm = GeneralModel(input_dim, [1024, 2048, 2048, 4096])
-        self.linear_weight = nn.Linear(4096, k)
+        self.linear_weight = nn.Linear(3, k)
 
     def forward(self, **kwargs):
         """
@@ -224,8 +225,9 @@ class EncoderKHeadVAE(nn.Module, Component):
         batch_size = logvar.size(0)
         logvar = logvar.view(batch_size, self.k, -1)
 
-        weights = self.weight_gm(x)
-        weights = self.linear_weight(weights)
+        # weights = self.weight_gm(x)
+        weights = self.linear_weight(x)
         # weights = nn.functional.softmax(weights, dim=1)
+        # weights = torch.FloatTensor([[1]]*x.shape[0]).to(logvar.device)
 
         return {"head_means": mu, "head_log_vars": logvar, "head_weights": weights}

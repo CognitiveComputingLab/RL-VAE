@@ -20,13 +20,14 @@ class Main:
         self.reward_history = []
 
     def train(self, epochs, latent_freq=10):
-        optimizer = torch.optim.Adam(list(self.emb_model.parameters()))
+        optimizer = torch.optim.Adam(list(self.emb_model.parameters()), lr=0.001)
         for epoch in tqdm(range(epochs), disable=False):
             self.emb_model.sampler.reset_epoch()
 
             # run through epoch
             epoch_done = False
             epoch_reward = 0
+            frame = 0
             while not epoch_done:
                 reward, epoch_done = self.emb_model(epoch)
                 loss = -reward[self.emb_model.reward_name]
@@ -36,11 +37,15 @@ class Main:
                 loss.backward()
                 optimizer.step()
 
+                """frame += 1
+                if frame == 5:
+                    return"""
+
             self.reward_history.append(epoch_reward)
 
             if not latent_freq == 0 and epoch % latent_freq == 0:
                 self.plot_latent(f"images/latent-{epoch}.png")
-                print(self.emb_model.explorer.current_exploration)
+                print(self.emb_model.explorer.epsilon)
 
     def plot_latent(self, path):
         # init
@@ -109,7 +114,7 @@ if __name__ == "__main__":
     toy_dataset = toy_torch_dataset.ToyTorchDataset(toy_data)
     data_loader = torch.utils.data.DataLoader(
         toy_dataset,
-        batch_size=10,
+        batch_size=100,
         shuffle=False
     )
 
@@ -117,8 +122,8 @@ if __name__ == "__main__":
     # model = examples.UMAP(3, 2, device, data_loader)
     # model = examples.TSNE(3, 2, device, data_loader)
     # model = examples.VAE(3, 2, device, data_loader)
-    model = examples.VarianceVAEDecreasing(3, 2, device, data_loader)
-    # model = examples.KHeadVAEDecreasing(3, 2, device, data_loader, k=5)
+    # model = examples.VarianceVAEDecreasing(3, 2, device, data_loader)
+    model = examples.KHeadVAEDecreasing(3, 2, device, data_loader, k=10)
     # model.explorer.current_exploration = 0
     model.reward.success_weight = 100
     # model.reward.kl_weight = 0
@@ -135,7 +140,7 @@ if __name__ == "__main__":
 
     # train the model
     # TODO multi head not working! torch.where gradients?
-    m.train(epochs=1000, latent_freq=20)
+    m.train(epochs=5000, latent_freq=100)
     m.plot_latent(f"images/post-training.png")
     m.plot_reward(f"images/reward-history.png")
 

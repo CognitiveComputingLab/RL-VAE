@@ -105,12 +105,9 @@ class RewardCalculatorKHeadVAE(RewardCalculator):
         chosen_log_var = kwargs["chosen_log_vars"]
 
         chosen_weights = chosen_weights.view(chosen_weights.shape[0], 1)
+        chosen_weights = f.softmax(chosen_weights, dim=0)
 
-        # print("chosen weights: ", chosen_weights)
-        # print("chosen means: ", chosen_mu)
-        # print("chosen log_var", chosen_log_var)
-
-        # similar to VAE loss, without KL term
+        # similar to VAE loss, without KL term and weighted by weight output
         variance = torch.exp(chosen_log_var)
         surprise = variance + torch.square(chosen_mu)
         success = f.mse_loss(x_a, x_b)
