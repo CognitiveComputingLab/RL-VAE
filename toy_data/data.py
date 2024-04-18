@@ -3,6 +3,7 @@ import os
 import re
 
 import numpy as np
+import pandas as pd
 from PIL import Image
 
 from toy_data.plotting import scatter3d, mpl_2d_plot, change_lightness
@@ -74,19 +75,41 @@ class ToyData(abc.ABC):
         raise NotImplementedError("No plotting function defined for this dataset")
 
 
-class CoilData(ToyData):
+class FashionMNIST(ToyData):
     def __init__(self, n):
         super().__init__(n)
         self._colors = None
 
-    @staticmethod
-    def generate_color_for_label(label):
-        """
-        generate random color seeded with labels
-        each label will have a unique color assigned
-        """
-        np.random.seed(label)
-        return tuple(np.random.rand(3))
+    @property
+    def colors(self):
+        return self._label_color_mapper(cmap='hsv')
+
+    def generate(self):
+        # get data from csv file
+        data_df = pd.read_csv("data/fashion_mnist/fashion-mnist_train.csv")
+
+        # get labels
+        labels = data_df['label'].to_numpy()
+        data_df = data_df.drop('label', axis=1)
+
+        # get rest of data as numpy array
+        data_np = np.array([row.to_numpy() for index, row in data_df.iterrows()])
+        data_np = data_np / 255
+
+        # update class variables
+        self._data = data_np[:self.n]
+        self._labels = labels[:self.n]
+
+        return self
+
+
+class CoilData(ToyData):
+    def __init__(self, n):
+        super().__init__(n)
+
+    @property
+    def colors(self):
+        return self._label_color_mapper(cmap='hsv')
 
     def generate(self):
         directory = "data/coil-100"
@@ -95,21 +118,13 @@ class CoilData(ToyData):
         # keep track of data
         images_list = []
         labels_list = []
-        colors_list = []
-        color_map = {}
 
         for filename in image_files:
             file_path = os.path.join(directory, filename)
             label = int(re.search(r'obj(\d+)_', filename).group(1))
 
-            if label not in color_map:
-                color_map[label] = self.generate_color_for_label(label)
-            color = color_map[label]
-
             # open the image file
             with Image.open(file_path) as img:
-                # convert image to grayscale
-                # img_gray = img.convert('L')
                 # normalize and flatten the image
                 img_normalized = np.array(img) / 255.0
                 img_flattened = img_normalized.reshape(-1)
@@ -117,23 +132,16 @@ class CoilData(ToyData):
                 # add to loaded images
                 images_list.append(img_flattened)
                 labels_list.append(label)
-                colors_list.append(color)
 
         # convert lists to numpy arrays
         images_array = np.stack(images_list)
         labels_array = np.stack(labels_list)
-        colors_array = np.stack(colors_list)
 
         # No need to reorder the dimensions since we're flattening the images
         self._data = images_array[:self.n]
         self._labels = labels_array[:self.n]
-        self._colors = colors_array[:self.n]
 
         return self
-
-    @property
-    def colors(self):
-        return self._colors
 
 
 class MusicData(ToyData):

@@ -58,25 +58,25 @@ class ExplorerKHeadVAE(Explorer):
         self._required_inputs = ["epoch", "head_means", "head_log_vars", "head_weights"]
 
         # hyperparameters
-        self.min_epsilon = 0.01
+        self.min_exploration = 0.01
         self.decay_rate = 0.999
-        self.epsilon_start = 2
+        self.starting_exploration = 2
 
         # exploration tracking
-        self.epsilon = self.epsilon_start
-        self.epsilon_save = self.epsilon_start
+        self.current_exploration = self.starting_exploration
+        self.exploration_save = self.starting_exploration
         self.previous_epoch = 0
 
     def train(self: T, mode: bool = True) -> T:
         # eval calls
         if not mode:
             # no exploration during evaluation
-            self.epsilon_save = self.epsilon
-            self.epsilon = 0.001
+            self.exploration_save = self.current_exploration
+            self.current_exploration = self.min_exploration
         # training mode
         else:
             # activate exploration
-            self.epsilon = self.epsilon_save
+            self.current_exploration = self.exploration_save
 
         # train for pytorch module
         return super().train(mode)
@@ -109,7 +109,7 @@ class ExplorerKHeadVAE(Explorer):
             self.exploration_function(epoch)
 
         # get max weight index for each point in batch
-        gumbel_softmax_indices = f.gumbel_softmax(weight, tau=self.epsilon, hard=True, dim=1)
+        gumbel_softmax_indices = f.gumbel_softmax(weight, tau=self.current_exploration, hard=True, dim=1)
 
         # get weights
         chosen_weights = torch.sum(gumbel_softmax_indices * weight, dim=1)
@@ -146,7 +146,7 @@ class ExplorerKHeadVAEDecreasing(ExplorerKHeadVAE):
 
         # decrease exploration every new epoch
         if self.previous_epoch < epoch:
-            self.epsilon = max(self.min_epsilon, self.epsilon * self.decay_rate)
+            self.min_exploration = max(self.min_exploration, self.min_exploration * self.decay_rate)
             self.previous_epoch = epoch
 
 

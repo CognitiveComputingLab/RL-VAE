@@ -45,7 +45,7 @@ class Main:
 
             if not latent_freq == 0 and epoch % latent_freq == 0:
                 self.plot_latent(f"images/latent-{epoch}.png")
-                print(self.emb_model.explorer.epsilon)
+                # print(self.emb_model.explorer.current_exploration)
 
     def plot_latent(self, path):
         # init
@@ -110,7 +110,8 @@ if __name__ == "__main__":
     device = get_device()
 
     # initialise the dataset as a pytorch dataloader
-    toy_data = data.MoebiusStrip(turns=1, n=1000).generate()
+    # toy_data = data.MoebiusStrip(turns=1, n=1000).generate()
+    toy_data = data.FashionMNIST(n=1000).generate()
     toy_dataset = toy_torch_dataset.ToyTorchDataset(toy_data)
     data_loader = torch.utils.data.DataLoader(
         toy_dataset,
@@ -118,14 +119,17 @@ if __name__ == "__main__":
         shuffle=False
     )
 
+    input_dim = toy_data.data.shape[1]
+    latent_dim = 2
+
     # initialise the model
-    # model = examples.UMAP(3, 2, device, data_loader)
-    # model = examples.TSNE(3, 2, device, data_loader)
-    # model = examples.VAE(3, 2, device, data_loader)
-    # model = examples.VarianceVAEDecreasing(3, 2, device, data_loader)
-    model = examples.KHeadVAEDecreasing(3, 2, device, data_loader, k=10)
+    model = examples.UMAP(input_dim, latent_dim, device, data_loader)
+    # model = examples.TSNE(input_dim, latent_dim, device, data_loader)
+    # model = examples.VAE(input_dim, latent_dim, device, data_loader)
+    # model = examples.VarianceVAEDecreasing(input_dim, latent_dim, device, data_loader)
+    # model = examples.KHeadVAEDecreasing(input_dim, latent_dim, device, data_loader, k=10)
     # model.explorer.current_exploration = 0
-    model.reward.success_weight = 100
+    # model.reward.success_weight = 100
     # model.reward.kl_weight = 0
 
     # Main
@@ -139,8 +143,7 @@ if __name__ == "__main__":
     # m.plot_latent(f"images/pre-trained.png")
 
     # train the model
-    # TODO multi head not working! torch.where gradients?
-    m.train(epochs=5000, latent_freq=100)
+    m.train(epochs=500, latent_freq=20)
     m.plot_latent(f"images/post-training.png")
     m.plot_reward(f"images/reward-history.png")
 
