@@ -120,21 +120,21 @@ class RewardCalculatorKHeadVAE(RewardCalculator):
 class RewardCalculatorUMAP(RewardCalculator):
     def __init__(self, device):
         super().__init__(device)
-        self._required_inputs = ["low_dim_property", "high_dim_property"]
+        self._required_inputs = ["low_dim_similarity", "high_dim_similarity"]
 
     def forward(self, **kwargs):
         """
-        encoder is trained on high- / low-dim property differences
+        encoder is trained on high- / low-dim similarity differences
         decoder is trained on reconstruction
         """
         # check required arguments
         self.check_required_input(**kwargs)
 
         # get information from different steps of embedding process
-        low_dim_prop = kwargs["low_dim_property"]
-        high_dim_prop = kwargs["high_dim_property"]
+        low_dim_prop = kwargs["low_dim_similarity"]
+        high_dim_prop = kwargs["high_dim_similarity"]
 
-        # encoder reward based on properties
+        # encoder reward based on similarities
         encoder_loss = f.binary_cross_entropy(low_dim_prop, high_dim_prop)
         encoder_reward = (-1) * encoder_loss
 
@@ -144,7 +144,7 @@ class RewardCalculatorUMAP(RewardCalculator):
 class RewardCalculatorTSNE(RewardCalculator):
     def __init__(self, device):
         super().__init__(device)
-        self._required_inputs = ["low_dim_property", "high_dim_property"]
+        self._required_inputs = ["low_dim_similarity", "high_dim_similarity"]
 
     def forward(self, **kwargs):
         """
@@ -156,8 +156,8 @@ class RewardCalculatorTSNE(RewardCalculator):
         self.check_required_input(**kwargs)
 
         # get information from different steps of embedding process
-        q = kwargs["low_dim_property"]
-        p = kwargs["high_dim_property"]
+        q = kwargs["low_dim_similarity"]
+        p = kwargs["high_dim_similarity"]
 
         # prevent division by 0
         p += 1e-8

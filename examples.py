@@ -1,6 +1,6 @@
 import torch.nn as nn
 
-import rl_embeddings.property_calculators as property_calculators
+import rl_embeddings.similarity_calculators as similarity_calculators
 import rl_embeddings.samplers as samplers
 import rl_embeddings.encoders as encoders
 import rl_embeddings.explorers as explorers
@@ -91,26 +91,26 @@ class UMAP(nn.Module):
         super(UMAP, self).__init__()
 
         # components
-        self.property = property_calculators.PropertyCalculatorUMAP(device, data_loader)
+        self.similarity = similarity_calculators.SimilarityCalculatorUMAP(device, data_loader)
         self.sampler = samplers.SamplerUMAP(device, data_loader)
         self.encoder = encoders.EncoderUMAP(input_dim, latent_dim).to(device)
         self.reward = reward_calculators.RewardCalculatorUMAP(device)
 
-        # init high dim property
-        self.property.calculate_high_dim_property()
+        # init high dim similarity
+        self.similarity.calculate_high_dim_similarity()
 
         # specifications
         self.reward_name = "encoder_reward"
 
     def forward(self, epoch=0):
-        sampler_out = self.sampler(**{"high_dim_property": self.property.high_dim_property})
+        sampler_out = self.sampler(**{"high_dim_similarity": self.similarity.high_dim_similarity})
         encoder_out = self.encoder(**sampler_out)
 
         if not self.training:
             return encoder_out["encoded_points"], sampler_out["points"][1]
 
-        property_out = self.property(**merge_dicts(sampler_out, encoder_out))
-        reward_out = self.reward(**merge_dicts(sampler_out, encoder_out, property_out))
+        similarity_out = self.similarity(**merge_dicts(sampler_out, encoder_out))
+        reward_out = self.reward(**merge_dicts(sampler_out, encoder_out, similarity_out))
 
         return reward_out, self.sampler.epoch_done
 
@@ -120,13 +120,13 @@ class TSNE(nn.Module):
         super(TSNE, self).__init__()
 
         # components
-        self.property = property_calculators.PropertyCalculatorTSNE(device, data_loader)
+        self.similarity = similarity_calculators.SimilarityCalculatorTSNE(device, data_loader)
         self.sampler = samplers.SamplerVAE(device, data_loader)
         self.encoder = encoders.EncoderSimple(input_dim, latent_dim).to(device)
         self.reward = reward_calculators.RewardCalculatorTSNE(device)
 
-        # init high dim property
-        self.property.calculate_high_dim_property()
+        # init high dim similarity
+        self.similarity.calculate_high_dim_similarity()
 
         # specifications
         self.reward_name = "encoder_reward"
@@ -138,8 +138,8 @@ class TSNE(nn.Module):
         if not self.training:
             return encoder_out["encoded_points"], sampler_out["points"][1]
 
-        property_out = self.property(**merge_dicts(sampler_out, encoder_out))
-        reward_out = self.reward(**merge_dicts(sampler_out, encoder_out, property_out))
+        similarity_out = self.similarity(**merge_dicts(sampler_out, encoder_out))
+        reward_out = self.reward(**merge_dicts(sampler_out, encoder_out, similarity_out))
 
         return reward_out, self.sampler.epoch_done
 

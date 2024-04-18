@@ -8,7 +8,7 @@ from sklearn.metrics.pairwise import euclidean_distances
 from rl_embeddings.components import Component
 
 
-class PropertyCalculator(nn.Module, Component, abc.ABC):
+class SimilarityCalculator(nn.Module, Component, abc.ABC):
     def __init__(self, device, data_loader):
         super().__init__()
         Component.__init__(self)
@@ -29,23 +29,23 @@ class PropertyCalculator(nn.Module, Component, abc.ABC):
     @abc.abstractmethod
     def symmetrize(self, prob, n):
         """
-        symmetrize the high dimensional property
+        symmetrize the high dimensional similarity
         """
         raise NotImplementedError
 
     ###############################
-    # high dim property functions #
+    # high dim similarity functions #
     ###############################
 
     @property
     @abc.abstractmethod
-    def high_dim_property(self):
+    def high_dim_similarity(self):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def calculate_high_dim_property(self):
+    def calculate_high_dim_similarity(self):
         """
-        compute all properties required for comparing high dimensional points
+        compute all similarities required for comparing high dimensional points
         """
         raise NotImplementedError
 
@@ -56,13 +56,13 @@ class PropertyCalculator(nn.Module, Component, abc.ABC):
     @abc.abstractmethod
     def forward(self, **kwargs):
         """
-        compute properties to calculate
-        :return: low and high dimensional properties according to the explorer output
+        compute similarities to calculate
+        :return: low and high dimensional similarities according to the explorer output
         """
         raise NotImplementedError
 
 
-class PropertyCalculatorUMAP(PropertyCalculator):
+class SimilarityCalculatorUMAP(SimilarityCalculator):
     # some code adapted from https://towardsdatascience.com/how-to-program-umap-from-scratch-e6eff67f55fe
     def __init__(self, device, data_loader):
         super().__init__(device, data_loader)
@@ -83,12 +83,12 @@ class PropertyCalculatorUMAP(PropertyCalculator):
 
     def forward(self, **kwargs):
         """
-        get low and high dimensional properties as defined in the UMAP paper
-        high dimensional property should already be calculated, needs to be retrieved for explorer_out
-        low dimensional property is calculated based on distributions with hyperparameters of high dim
+        get low and high dimensional similarities as defined in the UMAP paper
+        high dimensional similarity should already be calculated, needs to be retrieved for explorer_out
+        low dimensional similarity is calculated based on distributions with hyperparameters of high dim
         :return: tuple of tensors
-            - low dimensional properties
-            - high dimensional properties
+            - low dimensional similarities
+            - high dimensional similarities
         """
         # check required arguments
         self.check_required_input(**kwargs)
@@ -99,26 +99,26 @@ class PropertyCalculatorUMAP(PropertyCalculator):
         ind1 = kwargs["indices"]
         ind2 = kwargs["complementary_indices"]
 
-        # get properties
-        low_dim_property = self.get_low_dim_property(p1, p2)
-        high_dim_property = self.high_dim_property[ind1, ind2].float().to(self._device)
+        # get similarities
+        low_dim_similarity = self.get_low_dim_similarity(p1, p2)
+        high_dim_similarity = self.high_dim_similarity[ind1, ind2].float().to(self._device)
 
-        return {"low_dim_property": low_dim_property, "high_dim_property": high_dim_property}
+        return {"low_dim_similarity": low_dim_similarity, "high_dim_similarity": high_dim_similarity}
 
     ##############################################
-    # overwriting property calculation functions #
+    # overwriting similarity calculation functions #
     ##############################################
 
     @property
-    def high_dim_property(self):
+    def high_dim_similarity(self):
         return self.__symmetric_probabilities
 
     def symmetrize(self, prob, n):
         return prob + np.transpose(prob) - np.multiply(prob, np.transpose(prob))
 
-    def calculate_high_dim_property(self):
+    def calculate_high_dim_similarity(self):
         """
-        compute all properties required for comparing high dimensional points
+        compute all similarities required for comparing high dimensional points
         in this case, compute symmetric pairwise probabilities
         """
         # recover real dataset from data loader
@@ -138,9 +138,9 @@ class PropertyCalculatorUMAP(PropertyCalculator):
         self.__a = p[0]
         self.__b = p[1]
 
-    def get_low_dim_property(self, p1, p2):
+    def get_low_dim_similarity(self, p1, p2):
         """
-        calculate low dimensional property
+        calculate low dimensional similarity
         in this case probability of being neighbours between low dimensional points
         :param p1: first point as pytorch Tensor
         :param p2: second point as pytorch Tensor
@@ -225,7 +225,7 @@ class PropertyCalculatorUMAP(PropertyCalculator):
         return approx_sigma
 
 
-class PropertyCalculatorTSNE(PropertyCalculator):
+class SimilarityCalculatorTSNE(SimilarityCalculator):
     # some code adapted from https://towardsdatascience.com/understanding-t-sne-by-implementing-2baf3a987ab3
     def __init__(self, device, data_loader):
         super().__init__(device, data_loader)
@@ -238,14 +238,14 @@ class PropertyCalculatorTSNE(PropertyCalculator):
         self.perplexity = 3
 
     @property
-    def high_dim_property(self):
+    def high_dim_similarity(self):
         return self.__symmetric_probabilities
 
     def symmetrize(self, prob, n):
         sym_prob = (prob + prob.t()) / (2.0 * n)
         return sym_prob
 
-    def calculate_high_dim_property(self):
+    def calculate_high_dim_similarity(self):
         """
         calculate high dimensional distances according to T-SNE paper
         this is called only once before proper training starts
@@ -266,9 +266,9 @@ class PropertyCalculatorTSNE(PropertyCalculator):
 
         self.__symmetric_probabilities = c_pwd
 
-    def get_low_dim_property(self, p1):
+    def get_low_dim_similarity(self, p1):
         """
-        low dim property based on encoded points
+        low dim similarity based on encoded points
         """
         distances = self.pairwise_distances_torch(p1)
         nom = 1 / (1 + distances)
@@ -277,12 +277,12 @@ class PropertyCalculatorTSNE(PropertyCalculator):
 
     def forward(self, **kwargs):
         """
-        get low and high dimensional properties as defined in the TSNE paper
-        high dimensional property should already be calculated, needs to be retrieved for explorer_out
-        low dimensional property is calculated based on distributions with hyperparameters of high dim
+        get low and high dimensional similarities as defined in the TSNE paper
+        high dimensional similarity should already be calculated, needs to be retrieved for explorer_out
+        low dimensional similarity is calculated based on distributions with hyperparameters of high dim
         :return:
-            - low dimensional properties
-            - high dimensional properties
+            - low dimensional similarities
+            - high dimensional similarities
         """
         # check required arguments
         self.check_required_input(**kwargs)
@@ -292,18 +292,18 @@ class PropertyCalculatorTSNE(PropertyCalculator):
         ind1 = kwargs["indices"]
 
         # low dim distances
-        low_dist = self.get_low_dim_property(p1)
+        low_dist = self.get_low_dim_similarity(p1)
         low_dist.fill_diagonal_(0)
 
         # high dim distances for this specific batch
-        high_dist = self.high_dim_property[ind1][:, ind1]
+        high_dist = self.high_dim_similarity[ind1][:, ind1]
         # normalize according to batch
         high_dist = high_dist / high_dist.sum(axis=1).reshape([-1, 1])
         high_dist.fill_diagonal_(0)
         # make distances symmetric
         high_symmetric_distances = self.symmetrize(high_dist, len(ind1))
 
-        return {"low_dim_property": low_dist, "high_dim_property": high_symmetric_distances}
+        return {"low_dim_similarity": low_dist, "high_dim_similarity": high_symmetric_distances}
 
     ##########################
     # T-SNE helper functions #

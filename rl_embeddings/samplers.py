@@ -129,13 +129,13 @@ class SamplerVAE(Sampler):
 class SamplerUMAP(SamplerVAE):
     def __init__(self, device, data_loader):
         super().__init__(device, data_loader)
-        self._required_inputs = ["high_dim_property"]
+        self._required_inputs = ["high_dim_similarity"]
 
     def next_complementary_indices(self, high_dim_properties):
         """
         Get a single complementary index for each point in the current batch,
         randomly choosing between a positive and negative sample with equal probability.
-        :param high_dim_properties: high dimensional property matrix calculated by PropertyCalculator object
+        :param high_dim_properties: high dimensional similarity matrix calculated by similarityCalculator object
         :return: A tensor of shape [batch_size, 1] where each entry is the index of the complementary point.
         """
         complementary_indices = []
@@ -185,7 +185,7 @@ class SamplerUMAP(SamplerVAE):
         p1 = self.get_points_from_indices(ind1)
 
         # complementary point indices
-        ind2 = self.next_complementary_indices(kwargs["high_dim_property"])
+        ind2 = self.next_complementary_indices(kwargs["high_dim_similarity"])
 
         # complementary points
         p2 = self.get_points_from_indices(ind2)
