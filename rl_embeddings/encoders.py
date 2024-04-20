@@ -46,7 +46,7 @@ class EncoderSimple(nn.Module, Component):
         self._required_inputs = ["points"]
 
         # assuming each point has the same dimension as input_dim
-        self.gm = GeneralModel(input_dim, [1024, 2048, 2048, 4096])
+        self.gm = GeneralModel(input_dim, [1024, 4096])
 
         # output layers for each point
         self.linear1 = nn.Linear(4096, latent_dim)
@@ -191,10 +191,9 @@ class EncoderKHeadVAE(nn.Module, Component):
         self._required_inputs = ["points"]
 
         self.k = k
-        self.gm = GeneralModel(input_dim, [1024, 2048, 2048, 4096])
+        self.gm = GeneralModel(input_dim, [1024, 4096])
         self.linearM = nn.Linear(4096, k * latent_dims)
         self.linearS = nn.Linear(4096, k * latent_dims)
-        self.weight_gm = GeneralModel(input_dim, [1024, 2048, 2048, 4096])
         self.linear_weight = nn.Linear(input_dim, k)
 
     def forward(self, **kwargs):

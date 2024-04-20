@@ -103,7 +103,7 @@ class FashionMNIST(ToyData):
         return self
 
 
-class CoilData(ToyData):
+class Coil100(ToyData):
     def __init__(self, n):
         super().__init__(n)
 
@@ -138,6 +138,46 @@ class CoilData(ToyData):
         labels_array = np.stack(labels_list)
 
         # No need to reorder the dimensions since we're flattening the images
+        self._data = images_array[:self.n]
+        self._labels = labels_array[:self.n]
+
+        return self
+
+
+class Coil20(ToyData):
+    def __init__(self, n):
+        super().__init__(n)
+
+    @property
+    def colors(self):
+        return self._label_color_mapper(cmap='hsv')
+
+    def generate(self):
+        directory = "data/coil-20"
+        image_files = [f for f in os.listdir(directory) if f.endswith(".png")]
+
+        # Keep track of data
+        images_list = []
+        labels_list = []
+
+        for filename in image_files:
+            file_path = os.path.join(directory, filename)
+            label = int(re.search(r'obj(\d+)_', filename).group(1))
+
+            # Open the image file
+            with Image.open(file_path).convert('L') as img:  # 'L' mode for grayscale
+                # Normalize and flatten the image
+                img_normalized = np.array(img) / 255.0
+                img_flattened = img_normalized.reshape(-1)
+
+                # Add to loaded images
+                images_list.append(img_flattened)
+                labels_list.append(label)
+
+        # Convert lists to numpy arrays
+        images_array = np.stack(images_list)
+        labels_array = np.stack(labels_list)
+
         self._data = images_array[:self.n]
         self._labels = labels_array[:self.n]
 

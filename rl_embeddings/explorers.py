@@ -59,8 +59,8 @@ class ExplorerKHeadVAE(Explorer):
 
         # hyperparameters
         self.min_exploration = 0.01
-        self.decay_rate = 0.999
-        self.starting_exploration = 2
+        self.decay_rate = 0.99
+        self.starting_exploration = 1
 
         # exploration tracking
         self.current_exploration = self.starting_exploration
@@ -222,7 +222,7 @@ class ExplorerVarianceDecreasing(ExplorerVariance):
         super().__init__(device)
 
         # hyperparameters
-        self.exploration_decay = 0.999
+        self.exploration_decay = 0.99
         self.min_exploration = 0.01
 
         # keep track of epoch

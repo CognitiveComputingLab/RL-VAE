@@ -27,7 +27,6 @@ class Main:
             # run through epoch
             epoch_done = False
             epoch_reward = 0
-            frame = 0
             while not epoch_done:
                 reward, epoch_done = self.emb_model(epoch)
                 loss = -reward[self.emb_model.reward_name]
@@ -36,10 +35,6 @@ class Main:
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
-
-                """frame += 1
-                if frame == 5:
-                    return"""
 
             self.reward_history.append(epoch_reward)
 
@@ -110,8 +105,10 @@ if __name__ == "__main__":
     device = get_device()
 
     # initialise the dataset as a pytorch dataloader
-    # toy_data = data.MoebiusStrip(turns=1, n=1000).generate()
-    toy_data = data.FashionMNIST(n=1000).generate()
+    # toy_data = data.MoebiusStrip(turns=1, n=10000).generate()
+    # toy_data = data.FashionMNIST(n=1000).generate()
+    # toy_data = data.Sphere3D(n=10000).generate()
+    toy_data = data.Coil20(n=2000).generate()
     toy_dataset = toy_torch_dataset.ToyTorchDataset(toy_data)
     data_loader = torch.utils.data.DataLoader(
         toy_dataset,
@@ -121,13 +118,16 @@ if __name__ == "__main__":
 
     input_dim = toy_data.data.shape[1]
     latent_dim = 2
+    print("data finished loading with shape: ", toy_data.data.shape)
+
+    # compare_umap(toy_data)
 
     # initialise the model
-    model = examples.UMAP(input_dim, latent_dim, device, data_loader)
+    # model = examples.UMAP(input_dim, latent_dim, device, data_loader)
     # model = examples.TSNE(input_dim, latent_dim, device, data_loader)
-    # model = examples.VAE(input_dim, latent_dim, device, data_loader)
+    model = examples.VAE(input_dim, latent_dim, device, data_loader)
     # model = examples.VarianceVAEDecreasing(input_dim, latent_dim, device, data_loader)
-    # model = examples.KHeadVAEDecreasing(input_dim, latent_dim, device, data_loader, k=10)
+    # model = examples.KHeadVAEDecreasing(input_dim, latent_dim, device, data_loader, k=5)
     # model.explorer.current_exploration = 0
     # model.reward.success_weight = 100
     # model.reward.kl_weight = 0
@@ -137,13 +137,13 @@ if __name__ == "__main__":
     # m.plot_latent(f"images/no-training.png")
 
     # pretrain on spectral embedding
-    # pre_trainer = pre_trainers.PreTrainerSpectral(model, device, data_loader)
-    # pre_trainer.pre_train(epochs=100)
-    # pre_trainer.plot_spectral("images/spectral.png")
-    # m.plot_latent(f"images/pre-trained.png")
+    pre_trainer = pre_trainers.PreTrainerSpectral(model, device, data_loader)
+    pre_trainer.pre_train(epochs=20)
+    pre_trainer.plot_spectral("images/spectral.png")
+    m.plot_latent(f"images/pre-trained.png")
 
     # train the model
-    m.train(epochs=500, latent_freq=20)
+    m.train(epochs=50, latent_freq=1)
     m.plot_latent(f"images/post-training.png")
     m.plot_reward(f"images/reward-history.png")
 
