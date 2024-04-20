@@ -124,8 +124,8 @@ if __name__ == "__main__":
 
     # initialise the model
     # model = examples.UMAP(input_dim, latent_dim, device, data_loader)
-    # model = examples.TSNE(input_dim, latent_dim, device, data_loader)
-    model = examples.VAE(input_dim, latent_dim, device, data_loader)
+    model = examples.TSNE(input_dim, latent_dim, device, data_loader)
+    # model = examples.VAE(input_dim, latent_dim, device, data_loader)
     # model = examples.VarianceVAEDecreasing(input_dim, latent_dim, device, data_loader)
     # model = examples.KHeadVAEDecreasing(input_dim, latent_dim, device, data_loader, k=5)
     # model.explorer.current_exploration = 0

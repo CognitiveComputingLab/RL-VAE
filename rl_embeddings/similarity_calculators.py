@@ -256,7 +256,7 @@ class SimilarityCalculatorTSNE(SimilarityCalculator):
         dataset_tensor = torch.tensor(dataset.data, requires_grad=False).float().to(self._device)
 
         # pairwise distances between points as matrix
-        pwd = self.pairwise_distances_torch(dataset_tensor)
+        pwd = self.pairwise_distances_cdist(dataset_tensor)
 
         # binary search for sigma values according to perplexity hyperparameter
         sigmas = self.find_sigmas(pwd)
@@ -270,7 +270,7 @@ class SimilarityCalculatorTSNE(SimilarityCalculator):
         """
         low dim similarity based on encoded points
         """
-        distances = self.pairwise_distances_torch(p1)
+        distances = self.pairwise_distances_cdist(p1)
         nom = 1 / (1 + distances)
         nom_div = torch.sum(nom.clone().fill_diagonal_(0))
         return nom / nom_div
@@ -324,6 +324,10 @@ class SimilarityCalculatorTSNE(SimilarityCalculator):
         diff = diff ** 2
         diff = diff.sum(-1)
         return diff
+
+    @staticmethod
+    def pairwise_distances_cdist(x):
+        return torch.cdist(x, x).pow(2)
 
     @staticmethod
     def p_conditional(dists, sigmas, normalize=True):
