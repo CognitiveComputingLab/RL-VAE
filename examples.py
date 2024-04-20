@@ -97,12 +97,17 @@ class UMAP(nn.Module):
         self.reward = reward_calculators.RewardCalculatorUMAP(device)
 
         # init high dim similarity
-        self.similarity.calculate_high_dim_similarity()
+        self.similarities_initialized = False
 
         # specifications
         self.reward_name = "encoder_reward"
 
     def forward(self, epoch=0):
+        # check high dim similarities
+        if not self.similarities_initialized:
+            self.similarity.calculate_high_dim_similarity()
+            self.similarities_initialized = True
+
         sampler_out = self.sampler(**{"high_dim_similarity": self.similarity.high_dim_similarity})
         encoder_out = self.encoder(**sampler_out)
 
@@ -126,12 +131,17 @@ class TSNE(nn.Module):
         self.reward = reward_calculators.RewardCalculatorTSNE(device)
 
         # init high dim similarity
-        self.similarity.calculate_high_dim_similarity()
+        self.similarities_initialized = False
 
         # specifications
         self.reward_name = "encoder_reward"
 
     def forward(self, epoch=0):
+        # check high dim similarities
+        if not self.similarities_initialized:
+            self.similarity.calculate_high_dim_similarity()
+            self.similarities_initialized = True
+
         sampler_out = self.sampler()
         encoder_out = self.encoder(**sampler_out)
 
@@ -143,3 +153,10 @@ class TSNE(nn.Module):
 
         return reward_out, self.sampler.epoch_done
 
+
+class TSNE_UMAP(TSNE):
+    def __init__(self, input_dim, latent_dim, device, data_loader):
+        super(TSNE_UMAP, self).__init__(input_dim, latent_dim, device, data_loader)
+
+        # new components
+        self.similarity = similarity_calculators.SimilarityCalculatorTSNE_UMAP(device, data_loader)

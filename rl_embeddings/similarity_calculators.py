@@ -73,7 +73,7 @@ class SimilarityCalculatorUMAP(SimilarityCalculator):
 
         # hyperparameters
         self.k_neighbours = 15
-        self.min_distance = 0.25
+        self.min_distance = 0.8
         self.__a = None
         self.__b = None
 
@@ -389,3 +389,41 @@ class SimilarityCalculatorTSNE(SimilarityCalculator):
             # binary search to find the sigma that matches the perplexity for the row
             found_sigmas[i] = self.binary_search(func, self.perplexity)
         return found_sigmas
+
+
+class SimilarityCalculatorTSNE_UMAP(SimilarityCalculatorTSNE):
+    def __init__(self, device, data_loader):
+        super().__init__(device, data_loader)
+
+        # additional hyperparameters
+        self.min_distance = 0.0001
+        self.__a = 1
+        self.__b = 1
+
+    def calculate_high_dim_similarity(self):
+        # compute high dim similarities as normal for TSNE
+        super().calculate_high_dim_similarity()
+
+        # compute a and b hyperparameters in UMAP fashion
+        x = np.linspace(0, 3, 300)
+        p, _ = optimize.curve_fit(self.compute_low_dim_distance, x, self.f(x))
+        self.__a = p[0]
+        self.__b = p[1]
+        print("computed a and b as: ", self.__a, self.__b)
+
+    @staticmethod
+    def compute_low_dim_distance(x, a, b):
+        return 1 / (1 + a * x ** (2 * b))
+
+    def f(self, x):
+        y = []
+        for i in range(len(x)):
+            if x[i] <= self.min_distance:
+                y.append(1)
+            else:
+                y.append(np.exp(- x[i] + self.min_distance))
+        return y
+
+    def pairwise_distances_cdist(self, x):
+        return self.__a * torch.cdist(x, x).pow(2*self.__b)
+

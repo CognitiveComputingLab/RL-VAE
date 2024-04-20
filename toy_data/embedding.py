@@ -29,6 +29,8 @@ class UMAP(Embedding):
     def fit(self, verbose=False, n_neighbors=500, **kwargs):
         kwargs = dict(n_neighbors=n_neighbors, verbose=verbose) | kwargs
         self._embedding = umap.UMAP(**kwargs).fit_transform(self.dataset.data)
+        print(self._embedding)
+        # self._embedding = umap.ParametricUMAP(**kwargs).fit_transform(self.dataset.data)
         return self
 
     def plot(self):
