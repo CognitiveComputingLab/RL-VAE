@@ -1,4 +1,5 @@
 import abc
+import numpy as np
 
 from toy_data.util import DynamicImporter
 
@@ -29,7 +30,6 @@ class UMAP(Embedding):
     def fit(self, verbose=False, n_neighbors=500, **kwargs):
         kwargs = dict(n_neighbors=n_neighbors, verbose=verbose) | kwargs
         self._embedding = umap.UMAP(**kwargs).fit_transform(self.dataset.data)
-        print(self._embedding)
         # self._embedding = umap.ParametricUMAP(**kwargs).fit_transform(self.dataset.data)
         return self
 
@@ -43,3 +43,7 @@ class UMAP(Embedding):
         plt.gca().set_aspect('equal', 'datalim')
         plt.title('UMAP projection')
         plt.show()
+
+    def save_raw(self):
+        np.savez('images/umap_raw.npz', embeddings=self._embedding, colors=self.dataset.colors,
+                 labels=self.dataset.labels)

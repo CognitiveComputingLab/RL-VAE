@@ -2,6 +2,7 @@
 Example usage of rl-embedding framework
 """
 import matplotlib.pyplot as plt
+import numpy as np
 import torch
 import examples
 from toy_data import data, toy_torch_dataset
@@ -15,9 +16,14 @@ def get_device():
 
 
 class Main:
-    def __init__(self, emb_model):
+    def __init__(self, emb_model, toy_data_obj):
         self.emb_model = emb_model
+        self.toy_data = toy_data_obj
+
         self.reward_history = []
+        self.all_embeddings = []
+        self.all_colors = []
+        self.all_labels = []
 
     def train(self, epochs, latent_freq=10):
         optimizer = torch.optim.Adam(list(self.emb_model.parameters()), lr=0.001)
@@ -42,32 +48,62 @@ class Main:
                 self.plot_latent(f"images/latent-{epoch}.png")
                 # print(self.emb_model.explorer.current_exploration)
 
+    def save_raw(self, path):
+        # create arrays
+        emb = np.array(self.all_embeddings)
+        col = np.array(self.all_colors)
+        rew = np.array(self.reward_history)
+        lab = np.array(self.all_labels)
+
+        # save to file
+        np.savez(path, embeddings=emb, colors=col, rewards=rew, labels=lab)
+
+        # return for further computation
+        return emb, col, rew, lab
+
     def plot_latent(self, path):
         # init
         self.emb_model.eval()
         self.emb_model.sampler.reset_epoch()
 
+        # collect full embeddings
+        epoch_embeddings = []
+        epoch_colors = []
+        epoch_labels = []
+
         epoch_done = False
         while not epoch_done:
             # embed batch in eval mode
             z, y = self.emb_model()
+            indices = y["indices"].to('cpu').numpy()
+            labels = self.toy_data.labels[indices]
+            epoch_labels.append(labels)
+            y = y["points"][1]
             z = z.detach().to('cpu').numpy()
 
-            # break loop when epoch done
-            epoch_done = self.emb_model.sampler.epoch_done
+            # collect embeddings and colors for later use
+            epoch_embeddings.append(z)
+            colors = y[:, :3].to('cpu').detach().numpy()
+            epoch_colors.append(colors)
 
             # plot batch of points
-            colors = y[:, :3].to('cpu').detach().numpy()
             plt.scatter(z[:, 0], z[:, 1], c=colors)
 
-        # generate image
-        # plt.figure(figsize=(20, 16))
+            # check if epoch is done
+            epoch_done = self.emb_model.sampler.epoch_done
+
+        # generate and save plot
         plt.gca().set_aspect('equal', 'datalim')
-        plt.title(f'latent projection')
+        plt.title('Latent Projection')
         plt.savefig(path)
         plt.close()
 
-        # un-init
+        # save embeddings
+        self.all_embeddings.append(np.vstack(epoch_embeddings))
+        self.all_colors.append(np.vstack(epoch_colors))
+        self.all_labels.append(np.concatenate(epoch_labels))
+
+        # un-initialize
         self.emb_model.train()
 
     def plot_reward(self, path):
@@ -98,6 +134,7 @@ def compare_umap(toy_data_obj):
     from toy_data.embedding import UMAP
     umap_obj = UMAP(toy_data_obj)
     umap_obj.fit(n_neighbors=500, min_dist=0.5)
+    umap_obj.save_raw()
     umap_obj.plot()
 
 
@@ -114,7 +151,7 @@ if __name__ == "__main__":
     data_loader = torch.utils.data.DataLoader(
         toy_dataset,
         batch_size=1000,
-        shuffle=False
+        shuffle=True
     )
 
     input_dim = toy_data.data.shape[1]
@@ -135,7 +172,7 @@ if __name__ == "__main__":
     # model.reward.kl_weight = 0
 
     # Main
-    m = Main(model)
+    m = Main(model, toy_data)
     m.plot_latent(f"images/no-training.png")
 
     # pretrain on spectral embedding
@@ -145,7 +182,8 @@ if __name__ == "__main__":
     # m.plot_latent(f"images/pre-trained.png")
 
     # train the model
-    # m.train(epochs=500, latent_freq=10)
+    # m.train(epochs=5, latent_freq=10)
     # m.plot_latent(f"images/post-training.png")
     # m.plot_reward(f"images/reward-history.png")
+    # em, co, re, la = m.save_raw(f"images/raw-data.npz")
 

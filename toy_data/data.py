@@ -31,6 +31,12 @@ class ToyData(abc.ABC):
         """
         return self
 
+    @property
+    def labels(self):
+        if self._labels is None:
+            return []
+        return self._labels
+
     def add_noise(self, scale=0.1):
         """
         Add Gaussian noise to data (i.e. the _data attribute) and should return `self` for chained calls.

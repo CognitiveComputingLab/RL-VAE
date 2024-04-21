@@ -40,7 +40,7 @@ class VAE(nn.Module):
         explorer_out = self.explorer(**merge_dicts(encoder_out, {"epoch": epoch}))
 
         if not self.training:
-            return explorer_out["encoded_points"], sampler_out["points"][1]
+            return explorer_out["encoded_points"], sampler_out
 
         decoder_out = self.decoder(**explorer_out)
         concat = merge_dicts(sampler_out, encoder_out, explorer_out, decoder_out)
@@ -112,7 +112,7 @@ class UMAP(nn.Module):
         encoder_out = self.encoder(**sampler_out)
 
         if not self.training:
-            return encoder_out["encoded_points"], sampler_out["points"][1]
+            return encoder_out["encoded_points"], sampler_out
 
         similarity_out = self.similarity(**merge_dicts(sampler_out, encoder_out))
         reward_out = self.reward(**merge_dicts(sampler_out, encoder_out, similarity_out))
@@ -146,7 +146,7 @@ class TSNE(nn.Module):
         encoder_out = self.encoder(**sampler_out)
 
         if not self.training:
-            return encoder_out["encoded_points"], sampler_out["points"][1]
+            return encoder_out["encoded_points"], sampler_out
 
         similarity_out = self.similarity(**merge_dicts(sampler_out, encoder_out))
         reward_out = self.reward(**merge_dicts(sampler_out, encoder_out, similarity_out))
