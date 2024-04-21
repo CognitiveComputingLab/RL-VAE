@@ -49,6 +49,43 @@ class VAE(nn.Module):
         return reward_out, self.sampler.epoch_done
 
 
+class VAE_UMAP(nn.Module):
+    def __init__(self, input_dim, latent_dim, device, data_loader):
+        super(VAE_UMAP, self).__init__()
+
+        # components
+        self.similarity = similarity_calculators.SimilarityCalculatorUMAP(device, data_loader)
+        self.sampler = samplers.SamplerUMAP(device, data_loader)
+        self.encoder = encoders.EncoderVAE_UMAP(input_dim, latent_dim).to(device)
+        self.explorer = explorers.ExplorerVAE_UMAP(device)
+        # self.decoder = decoders.DecoderSimple(input_dim, latent_dim).to(device)
+        self.reward = reward_calculators.RewardCalculatorVAE_UMAP(device)
+
+        # init high dim similarity
+        self.similarities_initialized = False
+
+        # specifications
+        self.reward_name = "encoder_reward"
+
+    def forward(self, epoch=0):
+        # check high dim similarities
+        if not self.similarities_initialized:
+            self.similarity.calculate_high_dim_similarity()
+            self.similarities_initialized = True
+
+        sampler_out = self.sampler(**{"high_dim_similarity": self.similarity.high_dim_similarity})
+        encoder_out = self.encoder(**sampler_out)
+        explorer_out = self.explorer(**merge_dicts(encoder_out, {"epoch": epoch}))
+
+        if not self.training:
+            return explorer_out["encoded_points"], sampler_out
+
+        similarity_out = self.similarity(**merge_dicts(sampler_out, encoder_out, explorer_out))
+        reward_out = self.reward(**merge_dicts(sampler_out, encoder_out, similarity_out))
+
+        return reward_out, self.sampler.epoch_done
+
+
 class KHeadVAE(VAE):
     def __init__(self, input_dim, latent_dim, device, data_loader, k=2):
         super(KHeadVAE, self).__init__(input_dim, latent_dim, device, data_loader)

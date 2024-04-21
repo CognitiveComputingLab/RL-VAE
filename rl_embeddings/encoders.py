@@ -103,6 +103,49 @@ class EncoderUMAP(nn.Module, Component):
         return {"encoded_points": mu1, "encoded_complementary_points": mu2}
 
 
+class EncoderVAE_UMAP(nn.Module, Component):
+    def __init__(self, input_dim, latent_dim):
+        super(EncoderVAE_UMAP, self).__init__()
+        Component.__init__(self)
+        self._required_inputs = ["points", "complementary_points"]
+
+        # init network while assuming each point has the same dimension as input_dim
+        self.gm = GeneralModel(input_dim, [1024, 2048, 2048, 4096])
+
+        # output layers for each point
+        self.linearM = nn.Linear(4096, latent_dim)
+        self.linearS = nn.Linear(4096, latent_dim)
+
+    def forward(self, **kwargs):
+        """
+        pass regular points and complementary through general model
+        """
+        # check required arguments
+        self.check_required_input(**kwargs)
+
+        # get regular points from sample_out
+        p1 = kwargs["points"]
+        p2 = kwargs["complementary_points"]
+
+        # get xs from points
+        x1, _ = p1
+        x2, _ = p2
+
+        # get distribution parameters for points
+        x = self.gm(x1)
+        x = f.relu(x)
+        mu1 = self.linearM(x)
+        log_var1 = self.linearS(x)
+
+        # get distribution parameters for complementary points
+        x = self.gm(x2)
+        x = f.relu(x)
+        mu2 = self.linearM(x)
+        log_var2 = self.linearS(x)
+
+        return {"means": mu1, "log_vars": log_var1, "complementary_means": mu2, "complementary_log_vars": log_var2}
+
+
 class EncoderKHeadUMAP(nn.Module, Component):
     def __init__(self, input_dim, latent_dim, k=2):
         super(EncoderKHeadUMAP, self).__init__()
@@ -191,7 +234,7 @@ class EncoderKHeadVAE(nn.Module, Component):
         self._required_inputs = ["points"]
 
         self.k = k
-        self.gm = GeneralModel(input_dim, [1024, 4096])
+        self.gm = GeneralModel(input_dim, [1024, 2048, 2048, 4096])
         self.linearM = nn.Linear(4096, k * latent_dims)
         self.linearS = nn.Linear(4096, k * latent_dims)
         self.linear_weight = nn.Linear(input_dim, k)

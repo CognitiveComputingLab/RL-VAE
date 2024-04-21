@@ -52,6 +52,45 @@ class ExplorerVAE(Explorer):
         return {"encoded_points": sample}
 
 
+class ExplorerVAE_UMAP(Explorer):
+    def __init__(self, device):
+        super().__init__(device)
+        self._required_inputs = ["means", "log_vars", "complementary_means", "complementary_log_vars"]
+
+    def forward(self, **kwargs):
+        """
+        get single point from encoder output
+        sample from the output distribution via the re-parameterization trick
+        """
+        # check required arguments
+        self.check_required_input(**kwargs)
+
+        # get distribution variables
+        mu1 = kwargs["means"]
+        log_var1 = kwargs["log_vars"]
+        mu2 = kwargs["complementary_means"]
+        log_var2 = kwargs["complementary_log_vars"]
+
+        # no exploration
+        if not self.training:
+            return {"encoded_points": mu1}
+
+        # re-parameterization trick
+        # compute the standard deviation
+        std = torch.exp(log_var1 / 2)
+        # compute the normal distribution with the same standard deviation
+        eps = torch.randn_like(std)
+        # generate a sample
+        sample1 = mu1 + std * eps
+
+        # complementary
+        std2 = torch.exp(log_var2 / 2)
+        eps = torch.randn_like(std2)
+        sample2 = mu2 + std2 * eps
+
+        return {"encoded_points": sample1, "encoded_complementary_points": sample2}
+
+
 class ExplorerKHeadVAE(Explorer):
     def __init__(self, device):
         super().__init__(device)
@@ -59,7 +98,7 @@ class ExplorerKHeadVAE(Explorer):
 
         # hyperparameters
         self.min_exploration = 0.01
-        self.decay_rate = 0.99
+        self.decay_rate = 0.999
         self.starting_exploration = 1
 
         # exploration tracking

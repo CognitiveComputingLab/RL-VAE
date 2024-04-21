@@ -117,6 +117,38 @@ class RewardCalculatorKHeadVAE(RewardCalculator):
         return {"total_reward": total_reward}
 
 
+class RewardCalculatorVAE_UMAP(RewardCalculator):
+    def __init__(self, device):
+        super().__init__(device)
+        self._required_inputs = ["means", "log_vars", "points", "low_dim_similarity", "high_dim_similarity"]
+
+    def forward(self, **kwargs):
+        """
+        combine VAE and UMAP reward functions
+        """
+        # check required arguments
+        self.check_required_input(**kwargs)
+
+        # get information from different steps of embedding process
+        mu = kwargs["means"]
+        log_var = kwargs["log_vars"]
+        x_a, _ = kwargs["points"]
+        low_dim_prop = kwargs["low_dim_similarity"]
+        high_dim_prop = kwargs["high_dim_similarity"]
+
+        # KL term with prior as gaussian
+        kl_divergence = 0.5 * torch.sum(-1 - log_var + mu.pow(2) + log_var.exp())
+
+        # encoder reward based on similarities
+        encoder_loss = f.binary_cross_entropy(low_dim_prop, high_dim_prop)
+
+        # add reconstruction term
+        total_loss = encoder_loss + kl_divergence
+        total_reward = (-1) * total_loss
+
+        return {"encoder_reward": total_reward}
+
+
 class RewardCalculatorUMAP(RewardCalculator):
     def __init__(self, device):
         super().__init__(device)

@@ -396,7 +396,7 @@ class SimilarityCalculatorTSNE_UMAP(SimilarityCalculatorTSNE):
         super().__init__(device, data_loader)
 
         # additional hyperparameters
-        self.min_distance = 0.0001
+        self.min_distance = 0.01
         self.__a = 1
         self.__b = 1
 

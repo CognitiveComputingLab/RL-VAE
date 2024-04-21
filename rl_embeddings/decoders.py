@@ -9,7 +9,7 @@ class DecoderSimple(nn.Module, Component):
         Component.__init__(self)
         self._required_inputs = ["encoded_points"]
 
-        self.gm = GeneralModel(latent_dims, [512, 4096])
+        self.gm = GeneralModel(latent_dims, [512, 2048, 2048, 4096])
         self.linear = nn.Linear(4096, input_dim)
 
     def forward(self, **kwargs):

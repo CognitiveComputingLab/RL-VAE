@@ -56,7 +56,7 @@ class Main:
         lab = np.array(self.all_labels)
 
         # save to file
-        np.savez(path, embeddings=emb, colors=col, rewards=rew, labels=lab)
+        np.savez(path, embeddings=emb, colors=col, rewards=rew, labels=lab, high_dim_data=self.toy_data.data)
 
         # return for further computation
         return emb, col, rew, lab
@@ -87,7 +87,7 @@ class Main:
             epoch_colors.append(colors)
 
             # plot batch of points
-            plt.scatter(z[:, 0], z[:, 1], c=colors)
+            plt.scatter(z[:, 0], z[:, 1], c=colors, s=15)
 
             # check if epoch is done
             epoch_done = self.emb_model.sampler.epoch_done
@@ -133,7 +133,7 @@ class Main:
 def compare_umap(toy_data_obj):
     from toy_data.embedding import UMAP
     umap_obj = UMAP(toy_data_obj)
-    umap_obj.fit(n_neighbors=500, min_dist=0.5)
+    umap_obj.fit(n_neighbors=20, min_dist=1)
     umap_obj.save_raw()
     umap_obj.plot()
 
@@ -150,30 +150,31 @@ if __name__ == "__main__":
     toy_dataset = toy_torch_dataset.ToyTorchDataset(toy_data)
     data_loader = torch.utils.data.DataLoader(
         toy_dataset,
-        batch_size=1000,
-        shuffle=True
+        batch_size=100,
+        shuffle=False
     )
 
     input_dim = toy_data.data.shape[1]
     latent_dim = 2
     print("data finished loading with shape: ", toy_data.data.shape)
 
-    compare_umap(toy_data)
+    # compare_umap(toy_data)
 
     # initialise the model
     # model = examples.UMAP(input_dim, latent_dim, device, data_loader)
+    model = examples.VAE_UMAP(input_dim, latent_dim, device, data_loader)
     # model = examples.TSNE(input_dim, latent_dim, device, data_loader)
     # model = examples.TSNE_UMAP(input_dim, latent_dim, device, data_loader)
-    model = examples.VAE(input_dim, latent_dim, device, data_loader)
+    # model = examples.VAE(input_dim, latent_dim, device, data_loader)
     # model = examples.VarianceVAEDecreasing(input_dim, latent_dim, device, data_loader)
     # model = examples.KHeadVAEDecreasing(input_dim, latent_dim, device, data_loader, k=5)
     # model.explorer.current_exploration = 0
-    # model.reward.success_weight = 100
+    # model.reward.success_weight = 10
     # model.reward.kl_weight = 0
 
     # Main
     m = Main(model, toy_data)
-    m.plot_latent(f"images/no-training.png")
+    # m.plot_latent(f"images/no-training.png")
 
     # pretrain on spectral embedding
     # pre_trainer = pre_trainers.PreTrainerSpectral(model, device, data_loader)
@@ -182,8 +183,7 @@ if __name__ == "__main__":
     # m.plot_latent(f"images/pre-trained.png")
 
     # train the model
-    # m.train(epochs=5, latent_freq=10)
-    # m.plot_latent(f"images/post-training.png")
-    # m.plot_reward(f"images/reward-history.png")
-    # em, co, re, la = m.save_raw(f"images/raw-data.npz")
+    m.train(epochs=100, latent_freq=1)
+    m.plot_reward(f"images/reward-history.png")
+    em, co, re, la = m.save_raw(f"images/raw-data.npz")
 
