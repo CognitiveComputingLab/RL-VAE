@@ -28,7 +28,7 @@ class RewardCalculatorVAE(RewardCalculator):
         self._required_inputs = ["means", "log_vars", "points", "decoded_points"]
 
         # hyperparameters
-        self.success_weight = 1
+        self.success_weight = 10
         self.kl_weight = 1
 
     def forward(self, **kwargs):
@@ -121,6 +121,8 @@ class RewardCalculatorVAE_UMAP(RewardCalculator):
     def __init__(self, device):
         super().__init__(device)
         self._required_inputs = ["means", "log_vars", "points", "low_dim_similarity", "high_dim_similarity"]
+        self.umap_weight = 100
+        self.kl_weight = 0.01
 
     def forward(self, **kwargs):
         """
@@ -143,7 +145,7 @@ class RewardCalculatorVAE_UMAP(RewardCalculator):
         encoder_loss = f.binary_cross_entropy(low_dim_prop, high_dim_prop)
 
         # add reconstruction term
-        total_loss = encoder_loss + kl_divergence
+        total_loss = self.umap_weight * encoder_loss + self.kl_weight * kl_divergence
         total_reward = (-1) * total_loss
 
         return {"encoder_reward": total_reward}

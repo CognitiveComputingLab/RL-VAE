@@ -44,7 +44,7 @@ class Main:
 
             self.reward_history.append(epoch_reward)
 
-            if not latent_freq == 0 and epoch % latent_freq == 0:
+            if not latent_freq == 0 and epoch % latent_freq == 0 and epoch > 0:
                 self.plot_latent(f"images/latent-{epoch}.png")
                 # print(self.emb_model.explorer.current_exploration)
 
@@ -142,9 +142,13 @@ if __name__ == "__main__":
     # get pytorch device
     device = get_device()
 
-    # initialise the dataset as a pytorch dataloader
+    # choose dataset
     toy_data = data.MoebiusStrip(turns=1, n=1000).generate()
     # toy_data = data.Sphere3D(n=1000).generate()
+    # toy_data = data.FashionMNIST(n=1000).generate()
+    # toy_data = data.Coil20(n=1000).generate()
+
+    # initialise the dataset as a pytorch dataloader
     toy_dataset = toy_torch_dataset.ToyTorchDataset(toy_data)
     data_loader = torch.utils.data.DataLoader(
         toy_dataset,
@@ -156,8 +160,13 @@ if __name__ == "__main__":
     latent_dim = 2
     print("data finished loading with shape: ", toy_data.data.shape)
 
-    # initialise the model
-    model = examples.KHeadVAEDecreasing(input_dim, latent_dim, device, data_loader, k=5)
+    # choose embedding model
+    # model = examples.KHeadVAEDecreasing(input_dim, latent_dim, device, data_loader, k=5)
+    # model = examples.UMAP(input_dim, latent_dim, device, data_loader)
+    # model = examples.VAE_UMAP(input_dim, latent_dim, device, data_loader)
+    model = examples.VAE(input_dim, latent_dim, device, data_loader)
+
+    # initialise main object
     m = Main(model, toy_data)
     m.plot_latent(f"images/no-training.png")
 
@@ -169,6 +178,7 @@ if __name__ == "__main__":
 
     # train the model
     m.train(epochs=100, latent_freq=10)
+    m.plot_latent(f"images/post-trained.png")
     m.plot_reward(f"images/reward-history.png")
     em, co, re, la = m.save_raw(f"images/raw-data.npz")
 
