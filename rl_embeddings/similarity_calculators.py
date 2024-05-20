@@ -72,8 +72,8 @@ class SimilarityCalculatorUMAP(SimilarityCalculator):
         self.__symmetric_probabilities = None
 
         # hyperparameters
-        self.k_neighbours = 15
-        self.min_distance = 0.8
+        self.k_neighbours = 3
+        self.min_distance = 0.01
         self.__a = None
         self.__b = None
 
@@ -235,7 +235,7 @@ class SimilarityCalculatorTSNE(SimilarityCalculator):
         self.__symmetric_probabilities = None
 
         # hyperparameters
-        self.perplexity = 3
+        self.perplexity = 30
 
     @property
     def high_dim_similarity(self):
@@ -396,7 +396,7 @@ class SimilarityCalculatorTSNE_UMAP(SimilarityCalculatorTSNE):
         super().__init__(device, data_loader)
 
         # additional hyperparameters
-        self.min_distance = 0.01
+        self.min_distance = 1
         self.__a = 1
         self.__b = 1
 

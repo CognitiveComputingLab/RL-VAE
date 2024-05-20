@@ -133,7 +133,7 @@ class Main:
 def compare_umap(toy_data_obj):
     from toy_data.embedding import UMAP
     umap_obj = UMAP(toy_data_obj)
-    umap_obj.fit(n_neighbors=20, min_dist=1)
+    umap_obj.fit(n_neighbors=100, min_dist=0.25)
     umap_obj.save_raw()
     umap_obj.plot()
 
@@ -143,16 +143,16 @@ if __name__ == "__main__":
     device = get_device()
 
     # choose dataset
-    toy_data = data.MoebiusStrip(turns=1, n=1000).generate()
-    # toy_data = data.Sphere3D(n=1000).generate()
-    # toy_data = data.FashionMNIST(n=1000).generate()
-    # toy_data = data.Coil20(n=1000).generate()
+    # toy_data = data.MoebiusStrip(turns=1, n=10000).generate()
+    # toy_data = data.Sphere3D(n=10000).generate()
+    toy_data = data.FashionMNIST(n=10000).generate()
+    # toy_data = data.Coil20(n=10000).generate()
 
     # initialise the dataset as a pytorch dataloader
     toy_dataset = toy_torch_dataset.ToyTorchDataset(toy_data)
     data_loader = torch.utils.data.DataLoader(
         toy_dataset,
-        batch_size=100,
+        batch_size=1000,
         shuffle=False
     )
 
@@ -160,25 +160,23 @@ if __name__ == "__main__":
     latent_dim = 2
     print("data finished loading with shape: ", toy_data.data.shape)
 
+    # compare_umap(toy_data)
+
     # choose embedding model
-    # model = examples.KHeadVAEDecreasing(input_dim, latent_dim, device, data_loader, k=5)
-    # model = examples.UMAP(input_dim, latent_dim, device, data_loader)
-    # model = examples.VAE_UMAP(input_dim, latent_dim, device, data_loader)
-    model = examples.VAE(input_dim, latent_dim, device, data_loader)
+    model = examples.KHeadVAEDecreasing(input_dim, latent_dim, device, data_loader, k=5)
 
     # initialise main object
     m = Main(model, toy_data)
-    m.plot_latent(f"images/no-training.png")
 
     # pretrain on spectral embedding
-    pre_trainer = pre_trainers.PreTrainerSpectral(model, device, data_loader)
-    pre_trainer.pre_train(epochs=50)
-    pre_trainer.plot_spectral("images/spectral.png")
-    m.plot_latent(f"images/pre-trained.png")
+    # pre_trainer = pre_trainers.PreTrainerSpectral(model, device, data_loader)
+    # pre_trainer.pre_train(epochs=50)
+    # pre_trainer.plot_spectral("images/spectral.png")
+    # m.plot_latent(f"images/pre-trained.png")
 
     # train the model
-    m.train(epochs=100, latent_freq=10)
+    m.train(epochs=100, latent_freq=2)
     m.plot_latent(f"images/post-trained.png")
-    m.plot_reward(f"images/reward-history.png")
-    em, co, re, la = m.save_raw(f"images/raw-data.npz")
+    # m.plot_reward(f"images/reward-history.png")
+    # em, co, re, la = m.save_raw(f"images/raw-data.npz")
 

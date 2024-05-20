@@ -261,7 +261,7 @@ class ExplorerVarianceDecreasing(ExplorerVariance):
         super().__init__(device)
 
         # hyperparameters
-        self.exploration_decay = 0.99
+        self.exploration_decay = 0.7
         self.min_exploration = 0.01
 
         # keep track of epoch

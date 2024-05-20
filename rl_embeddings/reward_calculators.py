@@ -28,8 +28,8 @@ class RewardCalculatorVAE(RewardCalculator):
         self._required_inputs = ["means", "log_vars", "points", "decoded_points"]
 
         # hyperparameters
-        self.success_weight = 10
-        self.kl_weight = 1
+        self.success_weight = 0.5
+        self.kl_weight = 0.2
 
     def forward(self, **kwargs):
         """
@@ -121,8 +121,8 @@ class RewardCalculatorVAE_UMAP(RewardCalculator):
     def __init__(self, device):
         super().__init__(device)
         self._required_inputs = ["means", "log_vars", "points", "low_dim_similarity", "high_dim_similarity"]
-        self.umap_weight = 100
-        self.kl_weight = 0.01
+        self.umap_weight = 1
+        self.kl_weight = 0.0001
 
     def forward(self, **kwargs):
         """
