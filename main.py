@@ -143,24 +143,19 @@ if __name__ == "__main__":
     device = get_device()
 
     # choose dataset
-    # toy_data = data.MoebiusStrip(turns=1, n=10000).generate()
-    # toy_data = data.Sphere3D(n=10000).generate()
-    toy_data = data.FashionMNIST(n=10000).generate()
-    # toy_data = data.Coil20(n=10000).generate()
+    toy_data = data.MoebiusStrip(turns=1, n=10000).generate()
 
     # initialise the dataset as a pytorch dataloader
     toy_dataset = toy_torch_dataset.ToyTorchDataset(toy_data)
     data_loader = torch.utils.data.DataLoader(
         toy_dataset,
-        batch_size=1000,
+        batch_size=100,
         shuffle=False
     )
 
     input_dim = toy_data.data.shape[1]
     latent_dim = 2
     print("data finished loading with shape: ", toy_data.data.shape)
-
-    # compare_umap(toy_data)
 
     # choose embedding model
     model = examples.KHeadVAEDecreasing(input_dim, latent_dim, device, data_loader, k=5)
@@ -169,10 +164,10 @@ if __name__ == "__main__":
     m = Main(model, toy_data)
 
     # pretrain on spectral embedding
-    # pre_trainer = pre_trainers.PreTrainerSpectral(model, device, data_loader)
-    # pre_trainer.pre_train(epochs=50)
-    # pre_trainer.plot_spectral("images/spectral.png")
-    # m.plot_latent(f"images/pre-trained.png")
+    pre_trainer = pre_trainers.PreTrainerSpectral(model, device, data_loader)
+    pre_trainer.pre_train(epochs=50)
+    pre_trainer.plot_spectral("images/spectral.png")
+    m.plot_latent(f"images/pre-trained.png")
 
     # train the model
     m.train(epochs=100, latent_freq=2)
